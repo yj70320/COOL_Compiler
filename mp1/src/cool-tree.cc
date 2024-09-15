@@ -11,6 +11,15 @@
 #include "cool-tree.handcode.h"
 #include "cool-tree.h"
 
+Expression object_id(Symbol sym) {
+    // 假设 object() 函数用于处理对象标识符
+    return object(sym);
+}
+
+Expression add(Expression e1, Expression e2) {
+    // 假设 plus() 是用于处理两个表达式加法的函数
+    return plus(e1, e2);
+}
 
 // constructors' functions
 Program program_class::copy_Program()

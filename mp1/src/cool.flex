@@ -113,7 +113,6 @@ newline     \n|\r\n
 }
 
 
-
 /* 字符串常量 */
 \"                      { string_buf_ptr = string_buf; BEGIN(STRING); }
 <STRING>\"              {

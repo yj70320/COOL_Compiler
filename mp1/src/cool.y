@@ -171,6 +171,16 @@ expression_list : /* empty */
                 { $$ = append_Expressions($1, single_Expressions($2)); }
         ;
 
+/* expression 定义COOL语言中表达式的各种可能形式 */
+expression : INT_CONST { $$ = int_const($1); }          /* 整型常量 */
+           | BOOL_CONST { $$ = bool_const($1); }        /* 布尔常量 */
+           | STR_CONST { $$ = string_const($1); }       /* 字符串常量 */
+           | OBJECTID { $$ = object_id($1); }           /* 对象标识符 */
+           | OBJECTID ASSIGN expression { $$ = assign($1, $3); } /* 赋值操作 */
+           | expression '+' expression { $$ = add($1, $3); }     /* 加法 */
+           | expression '-' expression { $$ = sub($1, $3); }     /* 减法 */
+           ;
+
 /* end of grammar */
 %%
 
