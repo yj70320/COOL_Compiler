@@ -17,6 +17,7 @@
 #include <cool-parse.h>
 #include <stringtab.h>
 #include <utilities.h>
+#include <string>
 
 /* The compiler assumes these identifiers. */
 #define yylval cool_yylval
@@ -53,29 +54,25 @@ int comment_level = 0;
 
 %}
 
-%x COMMENT STRING
+%x COMMENT STRING INLINE_COMMENT
 
 %option noyywrap
-
-
 
 /*
  * Define names for regular expressions here.
  */
 
-digit       [0-9]
-lowercase   [a-z]
-uppercase   [A-Z]
-letter      ({lowercase}|{uppercase})
-id          ({letter}|_)({letter}|{digit}|_)*
-number      {digit}+
-whitespace  [ \t\f\r\v]+
-newline     \n|\r\n
-
+digit            [0-9]
+lowercase        [a-z]
+uppercase        [A-Z]
+letter           ({lowercase}|{uppercase})
+letter_or_digit  ({letter}|{digit}|_)
+id               ({letter}|_)({letter}|{digit}|_)*
+number           {digit}+
+whitespace       [ \t\f\r\v]+
+newline          \n|\r\n
 
 %%
-
-
 
  /*
   * Define regular expressions for the tokens of COOL here. Make sure, you
@@ -94,7 +91,7 @@ newline     \n|\r\n
   */
 
 /* 忽略空白字符 */
-{whitespace}            { /* Ignore whitespace */ }
+// {whitespace}            { /* Ignore whitespace */ }
 
 /* 处理换行符并更新行号 */
 {newline}               { curr_lineno++; }
@@ -104,13 +101,25 @@ newline     \n|\r\n
 <COMMENT>"(*"           { comment_level++; }
 <COMMENT>"*)"           { comment_level--; if (comment_level == 0) BEGIN(INITIAL); }
 <COMMENT>{newline}      { curr_lineno++; }
-<COMMENT>.|\n           ;
+<COMMENT>.              { }
 
 /* 在 COMMENT 状态下遇到 EOF 时，提示注释未结束 */
-<COMMENT><<EOF>> {
-    fprintf(stderr, "Unterminated comment at line %d\n", curr_lineno);
-    exit(1);
-}
+<COMMENT><<EOF>>       {
+                            yylval.error_msg = "EOF in comment";
+                            BEGIN(INITIAL);
+                            return ERROR;
+                        }
+
+/* Unmatched comment *) */
+"*)"                    {
+                            yylval.error_msg = "Unmatched *)";
+                            return ERROR;
+                        }
+
+/* Inline comments */
+"--"                    { BEGIN(INLINE_COMMENT); }
+<INLINE_COMMENT>[^\n]* { /* Ignore until end of line */ }
+<INLINE_COMMENT>\n     { curr_lineno++; BEGIN(INITIAL); }
 
 
 /* 字符串常量 */
@@ -125,23 +134,33 @@ newline     \n|\r\n
 <STRING>\\t             { *string_buf_ptr++ = '\t'; }
 <STRING>\\b             { *string_buf_ptr++ = '\b'; }
 <STRING>\\f             { *string_buf_ptr++ = '\f'; }
+<STRING>\\0             {
+                            curr_lineno++;
+                            yylval.error_msg = "String contains null character";
+                            BEGIN(INITIAL);
+                            return ERROR;
+                        }
 <STRING>\\\\            { *string_buf_ptr++ = '\\'; }
 <STRING>\\\"            { *string_buf_ptr++ = '\"'; }
 <STRING>\\(.)           { *string_buf_ptr++ = yytext[1]; }
 <STRING>{newline}       {
                             curr_lineno++;
-                            fprintf(stderr, "Unterminated string constant at line %d\n", curr_lineno);
-                            exit(1);
+                            yylval.error_msg = "Unterminated string constant";
+                            BEGIN(INITIAL);
+                            return ERROR;
                         }
+
 <STRING><<EOF>>         {
-                            fprintf(stderr, "EOF in string constant at line %d\n", curr_lineno);
-                            exit(1);
+                            yylval.error_msg = "EOF in string constant";
+                            BEGIN(INITIAL);
+                            return ERROR;
                         }
 <STRING>.               {
                             *string_buf_ptr++ = yytext[0];
                             if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
-                                fprintf(stderr, "String constant too long at line %d\n", curr_lineno);
-                                exit(1);
+                                yylval.error_msg = "String constant too long";
+                                BEGIN(INITIAL);
+                                return ERROR;
                             }
                         }
 
@@ -179,6 +198,17 @@ newline     \n|\r\n
             }
        }
 
+/* TYPEID */
+{uppercase}{letter_or_digit}* {
+    cool_yylval.symbol = idtable.add_string(yytext);
+    return TYPEID;
+}
+
+/* OBJECTID */
+{lowercase}{letter_or_digit}* {
+    cool_yylval.symbol = idtable.add_string(yytext);
+    return OBJECTID;
+}
 
 /* 整数常量 */
 {number} {
