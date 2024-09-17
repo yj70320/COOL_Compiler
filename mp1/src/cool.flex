@@ -94,7 +94,6 @@ newline          (\r\n|\n|\r)
   */
 
 
-
 {whitespace}            {  }
 {newline}               { curr_lineno++; }
 
@@ -121,7 +120,7 @@ newline          (\r\n|\n|\r)
 
 
 
-\"                      { string_buf_ptr = string_buf; BEGIN(STRING); }
+\"                      { string_buf_ptr = string_buf; BEGIN(STRING); } 
 <STRING>\"              {
                             *string_buf_ptr = '\0';
                             cool_yylval.symbol = stringtable.add_string(string_buf);
@@ -178,15 +177,17 @@ newline          (\r\n|\n|\r)
 "true"                  { cool_yylval.boolean = 1; return BOOL_CONST; }
 "false"                 { cool_yylval.boolean = 0; return BOOL_CONST; }
 
-
 {uppercase}{id_continue}*  {
-                                cool_yylval.symbol = idtable.add_string(yytext);
-                                return TYPEID;
-                            }
-{lowercase}{id_continue}*   {
-                                cool_yylval.symbol = idtable.add_string(yytext);
-                                return OBJECTID;
-                            }
+                           printf("TYPEID matched: %s\n", yytext);
+                           cool_yylval.symbol = idtable.add_string(yytext);
+                           return TYPEID;
+                           }
+
+{lowercase}{id_continue}* {
+                          printf("OBJECTID matched: %s\n", yytext);
+                          cool_yylval.symbol = idtable.add_string(yytext);
+                          return OBJECTID;
+                          }
 
 {number} {
              cool_yylval.symbol = inttable.add_string(yytext);
