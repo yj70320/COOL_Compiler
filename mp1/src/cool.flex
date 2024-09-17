@@ -1,7 +1,7 @@
-/* Flex 文件通常分为三部分：
- * 1. 定义部分（ %{...%} 之间）
- * 2. 正则表达式定义部分
- * 3. 规则部分
+/* three parts of flex file：
+ * 1. define（ %{...%} ）
+ * 2. regular expression
+ * 3. rules
  */
 
 /*
@@ -49,14 +49,15 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 
-/* 定义注释嵌套计数 */
+/* Define comment nesting level */
 int comment_level = 0;
 
 %}
 
-%x COMMENT STRING INLINE_COMMENT
+%x COMMENT STRING
 
 %option noyywrap
+
 
 /*
  * Define names for regular expressions here.
@@ -67,10 +68,12 @@ lowercase        [a-z]
 uppercase        [A-Z]
 letter           ({lowercase}|{uppercase})
 letter_or_digit  ({letter}|{digit}|_)
-id               ({letter}|_)({letter}|{digit}|_)*
+id_start         ({letter}|_)
+id_continue      ({letter}|{digit}|_)
+id               {id_start}{id_continue}+
 number           {digit}+
 whitespace       [ \t\f\r\v]+
-newline          \n|\r\n
+newline          (\r\n|\n|\r)
 
 %%
 
@@ -90,39 +93,34 @@ newline          \n|\r\n
   *     with the correct line number
   */
 
-/* 忽略空白字符 */
-// {whitespace}            { /* Ignore whitespace */ }
 
-/* 处理换行符并更新行号 */
+
+{whitespace}            {  }
 {newline}               { curr_lineno++; }
 
-/* 注释（包括嵌套注释） */
+
 "(*"                    { comment_level = 1; BEGIN(COMMENT); }
-<COMMENT>"(*"           { comment_level++; }
-<COMMENT>"*)"           { comment_level--; if (comment_level == 0) BEGIN(INITIAL); }
+<COMMENT>\(\*           { comment_level++; }
+<COMMENT>\*\)           {
+                            comment_level--;
+                            if (comment_level == 0) BEGIN(INITIAL);
+                        }
 <COMMENT>{newline}      { curr_lineno++; }
-<COMMENT>.              { }
+<COMMENT>[^(\*\n]+      {  }
+<COMMENT>.              {  }
 
-/* 在 COMMENT 状态下遇到 EOF 时，提示注释未结束 */
-<COMMENT><<EOF>>       {
-                            yylval.error_msg = "EOF in comment";
-                            BEGIN(INITIAL);
-                            return ERROR;
+<COMMENT><<EOF>>        {
+                            if (comment_level > 0) {
+                                yylval.error_msg = "EOF in comment";
+                                BEGIN(INITIAL);
+                                return ERROR;
+                            }
                         }
 
-/* Unmatched comment *) */
-"*)"                    {
-                            yylval.error_msg = "Unmatched *)";
-                            return ERROR;
-                        }
-
-/* Inline comments */
-"--"                    { BEGIN(INLINE_COMMENT); }
-<INLINE_COMMENT>[^\n]* { /* Ignore until end of line */ }
-<INLINE_COMMENT>\n     { curr_lineno++; BEGIN(INITIAL); }
+"--"[^\n]*              {  }
 
 
-/* 字符串常量 */
+
 \"                      { string_buf_ptr = string_buf; BEGIN(STRING); }
 <STRING>\"              {
                             *string_buf_ptr = '\0';
@@ -134,89 +132,68 @@ newline          \n|\r\n
 <STRING>\\t             { *string_buf_ptr++ = '\t'; }
 <STRING>\\b             { *string_buf_ptr++ = '\b'; }
 <STRING>\\f             { *string_buf_ptr++ = '\f'; }
-<STRING>\\0             {
-                            curr_lineno++;
-                            yylval.error_msg = "String contains null character";
-                            BEGIN(INITIAL);
-                            return ERROR;
-                        }
 <STRING>\\\\            { *string_buf_ptr++ = '\\'; }
 <STRING>\\\"            { *string_buf_ptr++ = '\"'; }
-<STRING>\\(.)           { *string_buf_ptr++ = yytext[1]; }
+<STRING>\\[^\n]         { *string_buf_ptr++ = yytext[1]; }
 <STRING>{newline}       {
                             curr_lineno++;
                             yylval.error_msg = "Unterminated string constant";
-                            BEGIN(INITIAL);
                             return ERROR;
                         }
-
+<STRING>\0              {
+                            yylval.error_msg = "String contains null character";
+                            return ERROR;
+                        }
 <STRING><<EOF>>         {
                             yylval.error_msg = "EOF in string constant";
-                            BEGIN(INITIAL);
                             return ERROR;
                         }
 <STRING>.               {
                             *string_buf_ptr++ = yytext[0];
                             if (string_buf_ptr - string_buf >= MAX_STR_CONST) {
                                 yylval.error_msg = "String constant too long";
-                                BEGIN(INITIAL);
                                 return ERROR;
                             }
                         }
 
-/* 类型标识符（首字母大写） */
-{uppercase}({letter}|{digit}|_)*  {
-                                    cool_yylval.symbol = stringtable.add_string(yytext);
-                                    return TYPEID;
-                                  }
 
-/* 关键字和标识符 */
-{id}   {
-       /* 检查是否为关键字 */
-       if (strcasecmp(yytext, "class") == 0) return CLASS;
-       else if (strcasecmp(yytext, "else") == 0) return ELSE;
-       else if (strcasecmp(yytext, "fi") == 0) return FI;
-       else if (strcasecmp(yytext, "if") == 0) return IF;
-       else if (strcasecmp(yytext, "in") == 0) return IN;
-       else if (strcasecmp(yytext, "inherits") == 0) return INHERITS;
-       else if (strcasecmp(yytext, "let") == 0) return LET;
-       else if (strcasecmp(yytext, "loop") == 0) return LOOP;
-       else if (strcasecmp(yytext, "pool") == 0) return POOL;
-       else if (strcasecmp(yytext, "then") == 0) return THEN;
-       else if (strcasecmp(yytext, "while") == 0) return WHILE;
-       else if (strcasecmp(yytext, "case") == 0) return CASE;
-       else if (strcasecmp(yytext, "esac") == 0) return ESAC;
-       else if (strcasecmp(yytext, "of") == 0) return OF;
-       else if (strcasecmp(yytext, "new") == 0) return NEW;
-       else if (strcasecmp(yytext, "isvoid") == 0) return ISVOID;
-       else if (strcasecmp(yytext, "not") == 0) return NOT;
-       else if (strcmp(yytext, "true") == 0) { cool_yylval.boolean = 1; return BOOL_CONST; }
-       else if (strcmp(yytext, "false") == 0) { cool_yylval.boolean = 0; return BOOL_CONST; }
-       else {
-            cool_yylval.symbol = stringtable.add_string(yytext);
-            return OBJECTID;
-            }
-       }
 
-/* TYPEID */
-{uppercase}{letter_or_digit}* {
-    cool_yylval.symbol = idtable.add_string(yytext);
-    return TYPEID;
-}
+"class"                 { return CLASS; }
+"else"                  { return ELSE; }
+"fi"                    { return FI; }
+"if"                    { return IF; }
+"in"                    { return IN; }
+"inherits"              { return INHERITS; }
+"let"                   { return LET; }
+"loop"                  { return LOOP; }
+"pool"                  { return POOL; }
+"then"                  { return THEN; }
+"while"                 { return WHILE; }
+"case"                  { return CASE; }
+"esac"                  { return ESAC; }
+"of"                    { return OF; }
+"new"                   { return NEW; }
+"isvoid"                { return ISVOID; }
+"not"                   { return NOT; }
+"true"                  { cool_yylval.boolean = 1; return BOOL_CONST; }
+"false"                 { cool_yylval.boolean = 0; return BOOL_CONST; }
 
-/* OBJECTID */
-{lowercase}{letter_or_digit}* {
-    cool_yylval.symbol = idtable.add_string(yytext);
-    return OBJECTID;
-}
 
-/* 整数常量 */
+{uppercase}{id_continue}*  {
+                                cool_yylval.symbol = idtable.add_string(yytext);
+                                return TYPEID;
+                            }
+{lowercase}{id_continue}*   {
+                                cool_yylval.symbol = idtable.add_string(yytext);
+                                return OBJECTID;
+                            }
+
 {number} {
-         cool_yylval.symbol = inttable.add_string(yytext);
-         return INT_CONST;
+             cool_yylval.symbol = inttable.add_string(yytext);
+             return INT_CONST;
          }
 
-/* 操作符和标点符号 */
+
 "+"                     { return '+'; }
 "-"                     { return '-'; }
 "*"                     { return '*'; }
@@ -237,11 +214,15 @@ newline          \n|\r\n
 "<-"                    { return ASSIGN; }
 "=>"                    { return DARROW; }
 
-/* 非法字符 */
+
+
 .                       {
-                            fprintf(stderr, "Illegal character '%s' at line %d\n", yytext, curr_lineno);
-                            /* 根据需求选择继续或退出 */
+                            char buffer[256];
+                            snprintf(buffer, sizeof(buffer), "Illegal character: %c", yytext[0]);
+                            yylval.error_msg = strdup(buffer);
+                            return ERROR;
                         }
 
 
 %%
+
