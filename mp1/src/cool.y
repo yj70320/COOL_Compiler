@@ -11,7 +11,8 @@
 
 /* Add your own C declarations here */
 
-
+/************************************************************************/
+/************************************************************************/
 /************************************************************************/
 /*                DONT CHANGE ANYTHING IN THIS SECTION                  */
 
@@ -89,6 +90,8 @@ extern int VERBOSE_ERRORS;
 
 /*  DON'T CHANGE ANYTHING ABOVE THIS LINE, OR YOUR PARSER WONT WORK       */
 /**************************************************************************/
+/************************************************************************/
+/************************************************************************/
  
    /* Complete the nonterminal list below, giving a type for the semantic
       value of each non terminal. (See section 3.6 in the bison 
@@ -174,10 +177,10 @@ expression_list : /* empty */
 expression : INT_CONST { $$ = int_const($1); }   
            | BOOL_CONST { $$ = bool_const($1); } 
            | STR_CONST { $$ = string_const($1); }
-           | OBJECTID { $$ = object_id($1); }   
+        //    | OBJECTID { $$ = object_id($1); }   
            | OBJECTID ASSIGN expression { $$ = assign($1, $3); } 
-           | expression '+' expression { $$ = add($1, $3); }   
-           | expression '-' expression { $$ = sub($1, $3); }  
+        //    | expression '+' expression { $$ = add($1, $3); }   
+        //    | expression '-' expression { $$ = sub($1, $3); }  
            | expression LE expression { $$ = leq($1, $3); }  
            ;
 
@@ -192,4 +195,6 @@ void yyerror(const char *s) {
     fprintf(stderr, "Error at line %d\n", curr_lineno);
   }
 }
+
+
 

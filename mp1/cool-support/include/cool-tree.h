@@ -13,9 +13,6 @@
 #include "cool-tree.handcode.h"
 
 
-Expression object_id(Symbol sym);
-Expression add(Expression e1, Expression e2);
-
 // define the class for phylum
 // define simple phylum - Program
 typedef class Program_class *Program;

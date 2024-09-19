@@ -22,12 +22,14 @@ Terminals unused in grammar
     ISVOID
     NOT
     ERROR
+    '+'
+    '-'
 
 
 Rules useless in grammar
 
-   22 expression_list: ε
-   23                | expression_list expression
+   19 expression_list: ε
+   20                | expression_list expression
 
 
 Grammar
@@ -57,11 +59,8 @@ Grammar
    14 expression: INT_CONST
    15           | BOOL_CONST
    16           | STR_CONST
-   17           | OBJECTID
-   18           | OBJECTID ASSIGN expression
-   19           | expression '+' expression
-   20           | expression '-' expression
-   21           | expression LE expression
+   17           | OBJECTID ASSIGN expression
+   18           | expression LE expression
 
 
 Terminals, with rules where they appear
@@ -69,8 +68,8 @@ Terminals, with rules where they appear
     $end (0) 0
     '(' (40) 10
     ')' (41) 10
-    '+' (43) 19
-    '-' (45) 20
+    '+' (43)
+    '-' (45)
     ':' (58) 8 9 10 13
     ';' (59) 4 5 8 9 10
     '{' (123) 4 5 10
@@ -97,10 +96,10 @@ Terminals, with rules where they appear
     INT_CONST <symbol> (276) 14
     BOOL_CONST <boolean> (277) 15
     TYPEID <symbol> (278) 4 5 8 9 10 13
-    OBJECTID <symbol> (279) 8 9 10 13 17 18
-    ASSIGN (280) 8 18
+    OBJECTID <symbol> (279) 8 9 10 13 17
+    ASSIGN (280) 8 17
     NOT (281)
-    LE (282) 21
+    LE (282) 18
     ERROR (283)
 
 
@@ -130,8 +129,8 @@ Nonterminals, with rules where they appear
         on left: 13
         on right: 12
     expression <expression> (45)
-        on left: 14 15 16 17 18 19 20 21
-        on right: 8 10 18 19 20 21
+        on left: 14 15 16 17 18
+        on right: 8 10 17 18
 
 
 State 0
@@ -401,56 +400,102 @@ State 31
 
 State 32
 
-   17 expression: OBJECTID •
-   18           | OBJECTID • ASSIGN expression
+   17 expression: OBJECTID • ASSIGN expression
 
     ASSIGN  shift, and go to state 36
-
-    $default  reduce using rule 17 (expression)
 
 
 State 33
 
     8 feature: OBJECTID ':' TYPEID ASSIGN expression • ';'
-   19 expression: expression • '+' expression
-   20           | expression • '-' expression
-   21           | expression • LE expression
+   18 expression: expression • LE expression
 
     LE   shift, and go to state 37
-    '+'  shift, and go to state 38
-    '-'  shift, and go to state 39
-    ';'  shift, and go to state 40
+    ';'  shift, and go to state 38
 
 
 State 34
 
    13 formal: OBJECTID ':' • TYPEID
 
-    TYPEID  shift, and go to state 41
+    TYPEID  shift, and go to state 39
 
 
 State 35
 
    10 feature: OBJECTID '(' formal_list ')' ':' • TYPEID '{' expression '}' ';'
 
-    TYPEID  shift, and go to state 42
+    TYPEID  shift, and go to state 40
 
 
 State 36
 
-   18 expression: OBJECTID ASSIGN • expression
+   17 expression: OBJECTID ASSIGN • expression
 
     STR_CONST   shift, and go to state 29
     INT_CONST   shift, and go to state 30
     BOOL_CONST  shift, and go to state 31
     OBJECTID    shift, and go to state 32
 
-    expression  go to state 43
+    expression  go to state 41
 
 
 State 37
 
-   21 expression: expression LE • expression
+   18 expression: expression LE • expression
+
+    STR_CONST   shift, and go to state 29
+    INT_CONST   shift, and go to state 30
+    BOOL_CONST  shift, and go to state 31
+    OBJECTID    shift, and go to state 32
+
+    expression  go to state 42
+
+
+State 38
+
+    8 feature: OBJECTID ':' TYPEID ASSIGN expression ';' •
+
+    $default  reduce using rule 8 (feature)
+
+
+State 39
+
+   13 formal: OBJECTID ':' TYPEID •
+
+    $default  reduce using rule 13 (formal)
+
+
+State 40
+
+   10 feature: OBJECTID '(' formal_list ')' ':' TYPEID • '{' expression '}' ';'
+
+    '{'  shift, and go to state 43
+
+
+State 41
+
+   17 expression: OBJECTID ASSIGN expression •
+   18           | expression • LE expression
+
+    LE  shift, and go to state 37
+
+    $default  reduce using rule 17 (expression)
+
+
+State 42
+
+   18 expression: expression • LE expression
+   18           | expression LE expression •
+
+    LE  error (nonassociative)
+
+    $default  reduce using rule 18 (expression)
+
+
+State 43
+
+   10 feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' • expression '}' ';'
 
     STR_CONST   shift, and go to state 29
     INT_CONST   shift, and go to state 30
@@ -460,132 +505,23 @@ State 37
     expression  go to state 44
 
 
-State 38
-
-   19 expression: expression '+' • expression
-
-    STR_CONST   shift, and go to state 29
-    INT_CONST   shift, and go to state 30
-    BOOL_CONST  shift, and go to state 31
-    OBJECTID    shift, and go to state 32
-
-    expression  go to state 45
-
-
-State 39
-
-   20 expression: expression '-' • expression
-
-    STR_CONST   shift, and go to state 29
-    INT_CONST   shift, and go to state 30
-    BOOL_CONST  shift, and go to state 31
-    OBJECTID    shift, and go to state 32
-
-    expression  go to state 46
-
-
-State 40
-
-    8 feature: OBJECTID ':' TYPEID ASSIGN expression ';' •
-
-    $default  reduce using rule 8 (feature)
-
-
-State 41
-
-   13 formal: OBJECTID ':' TYPEID •
-
-    $default  reduce using rule 13 (formal)
-
-
-State 42
-
-   10 feature: OBJECTID '(' formal_list ')' ':' TYPEID • '{' expression '}' ';'
-
-    '{'  shift, and go to state 47
-
-
-State 43
-
-   18 expression: OBJECTID ASSIGN expression •
-   19           | expression • '+' expression
-   20           | expression • '-' expression
-   21           | expression • LE expression
-
-    LE  shift, and go to state 37
-
-    $default  reduce using rule 18 (expression)
-
-
 State 44
 
-   19 expression: expression • '+' expression
-   20           | expression • '-' expression
-   21           | expression • LE expression
-   21           | expression LE expression •
+   10 feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression • '}' ';'
+   18 expression: expression • LE expression
 
-    LE  error (nonassociative)
-
-    $default  reduce using rule 21 (expression)
+    LE   shift, and go to state 37
+    '}'  shift, and go to state 45
 
 
 State 45
 
-   19 expression: expression • '+' expression
-   19           | expression '+' expression •
-   20           | expression • '-' expression
-   21           | expression • LE expression
+   10 feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' • ';'
 
-    LE  shift, and go to state 37
-
-    $default  reduce using rule 19 (expression)
+    ';'  shift, and go to state 46
 
 
 State 46
-
-   19 expression: expression • '+' expression
-   20           | expression • '-' expression
-   20           | expression '-' expression •
-   21           | expression • LE expression
-
-    LE  shift, and go to state 37
-
-    $default  reduce using rule 20 (expression)
-
-
-State 47
-
-   10 feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' • expression '}' ';'
-
-    STR_CONST   shift, and go to state 29
-    INT_CONST   shift, and go to state 30
-    BOOL_CONST  shift, and go to state 31
-    OBJECTID    shift, and go to state 32
-
-    expression  go to state 48
-
-
-State 48
-
-   10 feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression • '}' ';'
-   19 expression: expression • '+' expression
-   20           | expression • '-' expression
-   21           | expression • LE expression
-
-    LE   shift, and go to state 37
-    '+'  shift, and go to state 38
-    '-'  shift, and go to state 39
-    '}'  shift, and go to state 49
-
-
-State 49
-
-   10 feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' • ';'
-
-    ';'  shift, and go to state 50
-
-
-State 50
 
    10 feature: OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' ';' •
 
