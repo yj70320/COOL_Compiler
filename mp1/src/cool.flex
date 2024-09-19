@@ -18,6 +18,7 @@
 #include <stringtab.h>
 #include <utilities.h>
 #include <string>
+#include <unordered_set>
 
 /* The compiler assumes these identifiers. */
 #define yylval cool_yylval
@@ -49,8 +50,38 @@ extern YYSTYPE cool_yylval;
  *  Add Your own definitions here
  */
 
-/* Define comment nesting level */
+/* 定义注释嵌套级别 */
 int comment_level = 0;
+
+bool is_keyword(const std::string& id_lower) {
+    static const std::unordered_set<std::string> keywords = {
+        "class", "else", "fi", "if", "in", "inherits", "let",
+        "loop", "pool", "then", "while", "case", "esac", "of",
+        "new", "isvoid", "not"
+    };
+    return keywords.find(id_lower) != keywords.end();
+}
+
+int get_keyword_token(const std::string& id_lower) {
+    if (id_lower == "class") return CLASS;
+    else if (id_lower == "else") return ELSE;
+    else if (id_lower == "fi") return FI;
+    else if (id_lower == "if") return IF;
+    else if (id_lower == "in") return IN;
+    else if (id_lower == "inherits") return INHERITS;
+    else if (id_lower == "let") return LET;
+    else if (id_lower == "loop") return LOOP;
+    else if (id_lower == "pool") return POOL;
+    else if (id_lower == "then") return THEN;
+    else if (id_lower == "while") return WHILE;
+    else if (id_lower == "case") return CASE;
+    else if (id_lower == "esac") return ESAC;
+    else if (id_lower == "of") return OF;
+    else if (id_lower == "new") return NEW;
+    else if (id_lower == "isvoid") return ISVOID;
+    else if (id_lower == "not") return NOT;
+    else return 0; // 不应到达这里
+}
 
 %}
 
@@ -109,7 +140,8 @@ newline          (\r\n|\n|\r)
 <COMMENT>.              {  }
 
 <COMMENT><<EOF>>        {
-                            if (comment_level > 0) {
+                            if (comment_level > 0)
+                            {
                                 yylval.error_msg = "EOF in comment";
                                 BEGIN(INITIAL);
                                 return ERROR;

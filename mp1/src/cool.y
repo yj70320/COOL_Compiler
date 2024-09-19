@@ -76,13 +76,16 @@ extern int VERBOSE_ERRORS;
    problems (bison 1.25 and earlier start at 258, later versions -- at
    257)
 */
+
+
 %token CLASS 258 ELSE 259 FI 260 IF 261 IN 262 
 %token INHERITS 263 LET 264 LOOP 265 POOL 266 THEN 267 WHILE 268
 %token CASE 269 ESAC 270 OF 271 DARROW 272 NEW 273 ISVOID 274
-%token <symbol>  STR_CONST 275 INT_CONST 276 
+%token <symbol> STR_CONST 275 INT_CONST 276 
 %token <boolean> BOOL_CONST 277
-%token <symbol>  TYPEID 278 OBJECTID 279 
+%token <symbol> TYPEID 278 OBJECTID 279 
 %token ASSIGN 280 NOT 281 LE 282 ERROR 283
+
 
 /*  DON'T CHANGE ANYTHING ABOVE THIS LINE, OR YOUR PARSER WONT WORK       */
 /**************************************************************************/
@@ -103,10 +106,10 @@ extern int VERBOSE_ERRORS;
 %type <expressions> expression_list
 
 
-/* You will want to change the following line. */
-%type <features> dummy_feature_list
-
-/* Precedence declarations go here. */
+/* 优先级和结合性声明 */
+%left '+' '-'
+%right ASSIGN
+%nonassoc LE NOT
 
 
 %%
@@ -124,17 +127,13 @@ class_list
         ;
 
 /* If no parent is specified, the class inherits from the Object class. */
-class  : CLASS TYPEID '{' dummy_feature_list '}' ';'
+class  : CLASS TYPEID '{' feature_list '}' ';'
                 { $$ = class_($2,idtable.add_string("Object"),$4,
                               stringtable.add_string(curr_filename)); }
-        | CLASS TYPEID INHERITS TYPEID '{' dummy_feature_list '}' ';'
+        | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
                 { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
         ;
 
-/* Feature list may be empty, but no empty features in list. */
-dummy_feature_list:        /* empty */
-                {  $$ = nil_Features(); }
-        ;
 
 /* Feature list may be empty, but no empty features in list. */
 feature_list : /* empty */
@@ -172,31 +171,25 @@ expression_list : /* empty */
         ;
 
 /* expression 定义COOL语言中表达式的各种可能形式 */
-expression : INT_CONST { $$ = int_const($1); }          /* 整型常量 */
-           | BOOL_CONST { $$ = bool_const($1); }        /* 布尔常量 */
-           | STR_CONST { $$ = string_const($1); }       /* 字符串常量 */
-           | OBJECTID { $$ = object_id($1); }           /* 对象标识符 */
-           | OBJECTID ASSIGN expression { $$ = assign($1, $3); } /* 赋值操作 */
-           | expression '+' expression { $$ = add($1, $3); }     /* 加法 */
-           | expression '-' expression { $$ = sub($1, $3); }     /* 减法 */
+expression : INT_CONST { $$ = int_const($1); }   
+           | BOOL_CONST { $$ = bool_const($1); } 
+           | STR_CONST { $$ = string_const($1); }
+           | OBJECTID { $$ = object_id($1); }   
+           | OBJECTID ASSIGN expression { $$ = assign($1, $3); } 
+           | expression '+' expression { $$ = add($1, $3); }   
+           | expression '-' expression { $$ = sub($1, $3); }  
+           | expression LE expression { $$ = leq($1, $3); }  
            ;
 
 /* end of grammar */
 %%
 
 /* This function is called automatically when Bison detects a parse error. */
-void yyerror(const char *s)
-{
-  cerr << "\"" << curr_filename << "\", line " << curr_lineno << ": " \
-    << s << " at or near ";
-  print_cool_token(yychar);
-  cerr << endl;
-  omerrs++;
-
-  if(omerrs>20) {
-      if (VERBOSE_ERRORS)
-         fprintf(stderr, "More than 20 errors\n");
-      exit(1);
+void yyerror(const char *s) {
+  if (VERBOSE_ERRORS) {
+    fprintf(stderr, "Error: %s at line %d\n", s, curr_lineno);
+  } else {
+    fprintf(stderr, "Error at line %d\n", curr_lineno);
   }
 }
 
