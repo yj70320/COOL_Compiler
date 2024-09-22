@@ -55,7 +55,7 @@ int comment_level = 0;
 
 bool is_keyword(const std::string& id_lower) {
     static const std::unordered_set<std::string> keywords = {
-        "class", "else", "fi", "if", "in", "inherits", "let",
+        "class", "Class","else", "fi", "if", "in", "inherits", "let",
         "loop", "pool", "then", "while", "case", "esac", "of",
         "new", "isvoid", "not"
     };
@@ -64,6 +64,7 @@ bool is_keyword(const std::string& id_lower) {
 
 int get_keyword_token(const std::string& id_lower) {
     if (id_lower == "class") return CLASS;
+    else if (id_lower == "Class") return CLASS;
     else if (id_lower == "else") return ELSE;
     else if (id_lower == "fi") return FI;
     else if (id_lower == "if") return IF;
@@ -101,7 +102,7 @@ letter           ({lowercase}|{uppercase})
 letter_or_digit  ({letter}|{digit}|_)
 id_start         ({letter}|_)
 id_continue      ({letter}|{digit}|_)
-id               {id_start}{id_continue}+
+id               {id_start}{id_continue}*
 number           {digit}+
 whitespace       [ \t\f\r\v]+
 newline          (\r\n|\n|\r)
@@ -127,7 +128,6 @@ newline          (\r\n|\n|\r)
 
 {whitespace}            {  }
 {newline}               { curr_lineno++; }
-
 
 "(*"                    { comment_level = 1; BEGIN(COMMENT); }
 <COMMENT>\(\*           { comment_level++; }
@@ -190,6 +190,7 @@ newline          (\r\n|\n|\r)
 
 
 "class"                 { return CLASS; }
+"Class"                 { return CLASS; }
 "else"                  { return ELSE; }
 "fi"                    { return FI; }
 "if"                    { return IF; }
@@ -210,13 +211,13 @@ newline          (\r\n|\n|\r)
 "false"                 { cool_yylval.boolean = 0; return BOOL_CONST; }
 
 {uppercase}{id_continue}*  {
-                           printf("TYPEID matched: %s\n", yytext);
+                           //printf("TYPEID matched: %s\n", yytext);
                            cool_yylval.symbol = idtable.add_string(yytext);
                            return TYPEID;
                            }
 
 {lowercase}{id_continue}* {
-                          printf("OBJECTID matched: %s\n", yytext);
+                          //printf("OBJECTID matched: %s\n", yytext);
                           cool_yylval.symbol = idtable.add_string(yytext);
                           return OBJECTID;
                           }
