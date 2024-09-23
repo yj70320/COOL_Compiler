@@ -101,195 +101,102 @@ extern int VERBOSE_ERRORS;
 %type <program> program
 %type <classes> class_list
 %type <class_> class
+%type <features> feature_list
 %type <feature> feature
 %type <formal> formal
 %type <formals> formal_list
-%type <case_> branch
+%type <expression> expression
+%type <expressions> expression_list
 %type <cases> case_list
-%type <expression> exp
-%type <expressions> exps_comma
-%type <expressions> exps_smcln
-%type <expression> lets
-%type <expression> more_lets
-%type <features> feature_list
-
+%type <case_> branch
 
 /* 优先级和结合性声明 */
-%right IN
-%right ASSIGN
-%left NOT
-%nonassoc LE '<' '='
 %left '+' '-'
-%left '*' '/'
-%left ISVOID
-%left '~'
-%left '@'
-%left '.'
+%right ASSIGN
+%nonassoc LE NOT
 
 
 %%
 /* 
    Save the root of the abstract syntax tree in a global variable.
-*/ 
-program	: class_list	{ @$ = @1; ast_root = program($1); }
-    ;
+*/
+program : class_list { ast_root = program($1); }
+        ;
 
-    class_list
-    : class			/* single class */
-    { $$ = single_Classes($1);
-    parse_results = $$; }
-    | class_list class	/* several classes */
-    { $$ = append_Classes($1,single_Classes($2));
-    parse_results = $$; }
-    ;
+class_list
+        : class            /* single class */
+                { $$ = single_Classes($1); }
+        | class_list class /* several classes */
+                { $$ = append_Classes($1,single_Classes($2)); }
+        ;
 
-    /* If no parent is specified, the class inherits from the Object class. */
-    class	: CLASS TYPEID '{' feature_list '}' ';'
-    { $$ = class_($2,idtable.add_string("Object"),$4,
-    stringtable.add_string(curr_filename)); }
-    | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
-    { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
-    | CLASS error ';' {}
-    ;
+/* If no parent is specified, the class inherits from the Object class. */
+class  : CLASS TYPEID '{' feature_list '}' ';'
+                { $$ = class_($2,idtable.add_string("Object"),$4,
+                              stringtable.add_string(curr_filename)); }
+        | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
+                { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
+        ;
 
-    /* Feature list may be empty, but no empty features in list. */
-    feature_list:		/* empty */
-    { $$ = nil_Features(); }
-    | feature			/* single class */
-    { $$ = single_Features($1); }
-    | feature_list feature	/* several classes */
-    { $$ = append_Features($1,single_Features($2)); }
-    ;
 
-    feature : OBJECTID '(' formal_list ')' ':' TYPEID '{' exp '}' ';'
-    { $$ = method($1,$3,$6,$8); }
-    | OBJECTID ':' TYPEID ';'
-    { $$ = attr($1,$3,no_expr()); }
-    | OBJECTID ':' TYPEID ASSIGN exp ';'
-    { $$ = attr($1,$3,$5); }
-    | error ';' {}
-    ;
+/* Feature list may be empty, but no empty features in list. */
+feature_list : /* empty */
+                { $$ = nil_Features(); }
+        | feature_list feature
+                { $$ = append_Features($1, single_Features($2)); }
+        ;
 
-    formal_list:
-    { $$ = nil_Formals(); }
-    | formal
-    { $$ = single_Formals($1); }
-    | formal_list ',' formal
-    { $$ = append_Formals($1,single_Formals($3)); }
-    | error ',' {}
-    ;
+/* Feature definitions, such as attributes and methods. */
+feature : OBJECTID ':' TYPEID ASSIGN expression ';'
+                { $$ = attr($1, $3, $5); }
+        | OBJECTID ':' TYPEID ';'
+                { $$ = attr($1, $3, no_expr()); }
+        | OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' ';'
+                { $$ = method($1, $3, $6, $8); }
+        ;
 
-    formal : OBJECTID ':' TYPEID
-    { $$ = formal($1, $3); }
-    ;
+/* Formal parameter list for methods. */
+formal_list : /* empty */
+                { $$ = nil_Formals(); }
+        | formal_list formal
+                { $$ = append_Formals($1, single_Formals($2)); }
+        ;
 
-    branch : OBJECTID ':' TYPEID DARROW exp ';'
-    { $$ = branch($1,$3,$5); }
-    | error ';' {}
-    ;
+/* Single formal parameter (name and type). */
+formal : OBJECTID ':' TYPEID
+                { $$ = formal($1, $3); }
+        ;
 
-    case_list
-    : branch
-    { $$ = single_Cases($1); }
-    | case_list branch
-    { $$ = append_Cases($1,single_Cases($2)); }
-    ;
+/* Expressions, including binary and unary operators. */
+expression_list : /* empty */
+                { $$ = nil_Expressions(); }
+        | expression_list expression
+                { $$ = append_Expressions($1, single_Expressions($2)); }
+        ;
 
-    exps_comma:
-    { $$ = nil_Expressions(); }
-    | exp
-    { $$ = single_Expressions($1); }
-    | exps_comma ',' exp
-    { $$ = append_Expressions($1,single_Expressions($3)); }
-    | error ',' {}
-    ;
+/* expression 定义COOL语言中表达式的各种可能形式 */
+expression : INT_CONST { $$ = int_const($1); }   
+           | BOOL_CONST { $$ = bool_const($1); } 
+           | STR_CONST { $$ = string_const($1); }
+           | OBJECTID { $$ = object($1); }   
+           | OBJECTID ASSIGN expression { $$ = assign($1, $3); } 
+           | expression '+' expression { $$ = plus($1, $3); }   
+           | expression '-' expression { $$ = sub($1, $3); } 
+           | expression LE expression { $$ = leq($1, $3); }  
+           ;
 
-    exps_smcln
-    : exp ';'
-    { $$ = single_Expressions($1); }
-    | exps_smcln exp ';'
-    { $$ = append_Expressions($1,single_Expressions($2)); }
-    | error ';' {}
-    ;
+case_list : case_list branch ';'
+          { $$ = append_Cases($1, single_Cases($2)); }
 
-    exp
-    : OBJECTID ASSIGN exp
-    { $$ = assign($1,$3); }
-    | exp '.' OBJECTID '(' exps_comma ')'
-    { $$ = dispatch($1,$3,$5); }
-    | exp '@' TYPEID '.' OBJECTID '(' exps_comma ')'
-    { $$ = static_dispatch($1,$3,$5,$7); }
-    | OBJECTID '(' exps_comma ')'
-    { $$ = dispatch(object(idtable.add_string("self")), $1, $3); }
-    | IF exp THEN exp ELSE exp FI
-    { $$ = cond($2,$4,$6); }
-    | WHILE exp LOOP exp POOL
-    { $$ = loop($2,$4); }
-    | '{' exps_smcln '}'
-    { $$ = block($2); }
-    | CASE exp OF case_list ESAC
-    { $$ = typcase($2,$4); }
-    | NEW TYPEID
-    { $$ = new_($2); }
-    | ISVOID exp
-    { $$ = isvoid($2); }
-    | exp '+' exp
-    { $$ = plus($1,$3); }
-    | exp '-' exp
-    { $$ = sub($1,$3); }
-    | exp '*' exp
-    { $$ = mul($1,$3); }
-    | exp '/' exp
-    { $$ = divide($1,$3); }
-    | '~' exp
-    { $$ = neg($2); }
-    | exp '<' exp
-    { $$ = lt($1,$3); }
-    | exp LE exp
-    { $$ = leq($1,$3); }
-    | exp '=' exp
-    { $$ = eq($1,$3); }
-    | NOT exp
-    { $$ = comp($2); }
-    | '(' exp ')'
-    { $$ = $2; }
-    | OBJECTID
-    { $$ = object($1); }
-    | INT_CONST
-    { $$ = int_const($1); }
-    | STR_CONST
-    { $$ = string_const($1); }
-    | BOOL_CONST
-    { $$ = bool_const($1); }
-    | lets
-    { $$ = $1; }
-    ;
+          | branch ';'
+          { $$ = single_Cases($1); }
+          
+          ;
 
-    lets : LET OBJECTID ':' TYPEID IN exp
-    { $$ = let($2, $4, no_expr(), $6); }
-    | LET OBJECTID ':' TYPEID ASSIGN exp IN exp
-    { $$ = let($2, $4, $6, $8); }
-    | LET OBJECTID ':' TYPEID more_lets
-    { $$ = let($2, $4, no_expr(), $5); }
-    | LET OBJECTID ':' TYPEID ASSIGN exp more_lets
-    { $$ = let($2, $4, $6, $7);}
-    | LET error IN exp {}
-    | LET error more_lets
-    { $$ = $3; }
-    ;
-
-    more_lets : ',' OBJECTID ':' TYPEID IN exp
-    { $$ = let($2, $4, no_expr(), $6); }
-    | ',' OBJECTID ':' TYPEID ASSIGN exp IN exp
-    { $$ = let($2, $4, $6, $8); }
-    | ',' OBJECTID ':' TYPEID more_lets
-    { $$ = let($2, $4, no_expr(), $5); }
-    | ',' OBJECTID ':' TYPEID ASSIGN exp more_lets
-    { $$ = let($2, $4, $6, $7); }
-    | ',' error IN exp {}
-    | ',' error more_lets
-    { $$ = $3; }
-    ;
+branch : OBJECTID ':' TYPEID DARROW expression
+       { $$ = branch($1, $3, $5); }
+       
+       ;
 /* end of grammar */
 %%
 
@@ -300,6 +207,11 @@ void yyerror(const char *s) {
   } else {
     fprintf(stderr, "Error at line %d\n", curr_lineno);
   }
+  omerrs++;
+  if (omerrs > 50) {
+        fprintf(stdout, "More than 50 errors\n");
+        exit(1);
+    }
 }
 
 
