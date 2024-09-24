@@ -136,6 +136,8 @@ class  : CLASS TYPEID '{' feature_list '}' ';'
                               stringtable.add_string(curr_filename)); }
         | CLASS TYPEID INHERITS TYPEID '{' feature_list '}' ';'
                 { $$ = class_($2,$4,$6,stringtable.add_string(curr_filename)); }
+        
+        | CLASS error ';' {}
         ;
 
 
@@ -153,13 +155,15 @@ feature : OBJECTID ':' TYPEID ASSIGN expression ';'
                 { $$ = attr($1, $3, no_expr()); }
         | OBJECTID '(' formal_list ')' ':' TYPEID '{' expression '}' ';'
                 { $$ = method($1, $3, $6, $8); }
+        | error ';' {}
         ;
 
 /* Formal parameter list for methods. */
 formal_list : /* empty */
                 { $$ = nil_Formals(); }
-        | formal_list formal
+        |  formal_list formal
                 { $$ = append_Formals($1, single_Formals($2)); }
+        | error ',' {}
         ;
 
 /* Single formal parameter (name and type). */
@@ -195,23 +199,24 @@ case_list : case_list branch ';'
 
 branch : OBJECTID ':' TYPEID DARROW expression
        { $$ = branch($1, $3, $5); }
-       
+        | error ';' {}       
        ;
 /* end of grammar */
 %%
 
 /* This function is called automatically when Bison detects a parse error. */
 void yyerror(const char *s) {
-  if (VERBOSE_ERRORS) {
-    fprintf(stderr, "Error: %s at line %d\n", s, curr_lineno);
-  } else {
-    fprintf(stderr, "Error at line %d\n", curr_lineno);
-  }
+  cerr << "\"" << curr_filename << "\", line " << curr_lineno << ": " \
+    << s << " at or near ";
+  print_cool_token(yychar);
+  cerr << endl;
   omerrs++;
-  if (omerrs > 50) {
-        fprintf(stdout, "More than 50 errors\n");
-        exit(1);
-    }
+
+  if(omerrs>20) {
+      if (VERBOSE_ERRORS)
+         fprintf(stderr, "More than 20 errors\n");
+      exit(1);
+  }
 }
 
 
