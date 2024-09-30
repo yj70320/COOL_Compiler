@@ -9,3 +9,7 @@ run lexer: ./lexer filename.cl
 compile parser: make parser
 run parser: ./lexer filename.cl |./parser
 
+
+Hello< Yijun. Thank you for the good work you are doing. Keep up with the effort and be sure to appreciate how much you would learned by the end of the course. Relax for a bit and concentrate on your homeworks while l post MP3.
+Good Job.
+
