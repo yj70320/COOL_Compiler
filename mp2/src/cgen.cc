@@ -706,6 +706,16 @@ void method_class::code(CgenEnvironment *env) {
     std::cerr << "method" << endl;
 
   // ADD CODE HERE
+  ValuePrinter vp(*env->cur_stream);
+
+  // make alloca for all exp
+  expr->make_alloca(env);
+
+  // generate code and get the ret val
+  operand res_Main_main = expr->code(env);
+
+  // ret
+  vp.ret(*env->cur_stream, res_Main_main);
 }
 
 //
@@ -725,6 +735,7 @@ operand cond_class::code(CgenEnvironment *env) {
     std::cerr << "cond" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
+
   return operand();
 }
 
