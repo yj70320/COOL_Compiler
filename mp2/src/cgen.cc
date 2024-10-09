@@ -9,6 +9,7 @@
 #include "cgen.h"
 #include <sstream>
 #include <string>
+#include <limits>
 
 //
 extern int cgen_debug;
@@ -727,7 +728,23 @@ operand assign_class::code(CgenEnvironment *env) {
     std::cerr << "assign" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand assign_rhs = expr->code(env);
+
+  operand *assign_lhs = env->lookup(name);
+  
+  if (assign_lhs == nullptr) {
+    std::cerr << "Error: Variable " << name << " not found in scope." << endl;
+    return assign_rhs;
+  }
+  
+  // after getting the location assign_lhs 
+  vp.store(*env->cur_stream, assign_rhs, *assign_lhs);
+
+  return assign_rhs;
+  
 }
 
 operand cond_class::code(CgenEnvironment *env) {
@@ -735,8 +752,36 @@ operand cond_class::code(CgenEnvironment *env) {
     std::cerr << "cond" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
+  // return operand();
 
-  return operand();
+  ValuePrinter vp(*env->cur_stream);
+  
+  auto check_ = pred->code(env);
+  auto true_ = env->new_true_label();
+  auto false_ = env->new_false_label();
+  auto end_ = env->new_end_label();  
+
+  vp.branch_cond(check_, true_, false_);
+
+  vp.begin_block(true_);
+  auto then_ = then_exp->code(env);
+
+  operand cond_res; 
+  operand res_ptr = vp.alloca_mem(then_.get_type()); 
+  op_type result_type = then_.get_type();
+
+  vp.store(*env->cur_stream, then_, res_ptr);
+  vp.branch_uncond(end_);
+
+  vp.begin_block(false_);
+  auto else_ = else_exp->code(env);
+  vp.store(*env->cur_stream, else_, res_ptr);
+  vp.branch_uncond(end_);
+
+  vp.begin_block(end_);
+  cond_res = vp.load(result_type, res_ptr);
+
+  return cond_res;
 }
 
 operand loop_class::code(CgenEnvironment *env) {
@@ -744,7 +789,30 @@ operand loop_class::code(CgenEnvironment *env) {
     std::cerr << "loop" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+
+  auto loop_label = env->new_loop_label();
+  auto true_label = env->new_true_label();
+  auto false_label = env->new_false_label();
+  
+  vp.branch_uncond(loop_label);
+  
+  vp.begin_block(loop_label);
+  auto pred_op = pred->code(env);
+  vp.branch_cond(*env->cur_stream, pred_op, true_label, false_label);
+
+  vp.begin_block(true_label);
+  body->code(env);
+  vp.branch_uncond(loop_label);
+
+  vp.begin_block(false_label);
+  
+  int_value i32_0(0);
+
+  return i32_0;
+
 }
 
 operand block_class::code(CgenEnvironment *env) {
@@ -752,7 +820,18 @@ operand block_class::code(CgenEnvironment *env) {
     std::cerr << "block" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  int i = 0;
+  for(i = body->first(); body->more(i) && body->more(i+1); i = body->next(i)) {
+    auto expr_iter = body->nth(i);
+    expr_iter->code(env);
+  }
+
+  auto expr_iter = body->nth(i);
+  operand block_res = expr_iter->code(env);
+
+  return block_res;
 }
 
 operand let_class::code(CgenEnvironment *env) {
@@ -760,7 +839,42 @@ operand let_class::code(CgenEnvironment *env) {
     std::cerr << "let" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+
+  op_type id_type = op_type(INT32);
+  operand id_op = vp.alloca_mem(id_type);
+
+  int_value i32_0(0);
+  bool_value i1_false(false, true);
+
+  operand init_op = init->code(env);
+
+  // store value
+  if (init_op.is_empty()) 
+  { // 没有初始值
+    if (id_type.get_id() == INT32 && id_type.get_name() == "i32") {
+      vp.store(*env->cur_stream, i32_0, id_op);
+    } else if (id_type.get_id() == INT1 && id_type.get_name() == "i1") {
+      vp.store(*env->cur_stream, i1_false, id_op);
+    }
+  } 
+  else 
+  {  // 有初始值
+    vp.store(*env->cur_stream, init_op, id_op);
+  }
+
+  // 添加绑定
+  Symbol identifier = this->identifier;   
+  env->add_binding(identifier, &id_op);
+
+  // 进入 scope, 执行主体代码, 离开 scope
+  env->open_scope();  
+  operand let_res = body->code(env);  
+  env->close_scope();
+
+  return let_res;
 }
 
 operand plus_class::code(CgenEnvironment *env) {
@@ -768,7 +882,14 @@ operand plus_class::code(CgenEnvironment *env) {
     std::cerr << "plus" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand op1_ = e1->code(env);
+  operand op2_ = e2->code(env);
+  operand plus_res = vp.add(op1_, op2_);
+
+  return plus_res;
 }
 
 operand sub_class::code(CgenEnvironment *env) {
@@ -776,7 +897,14 @@ operand sub_class::code(CgenEnvironment *env) {
     std::cerr << "sub" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand op1_ = e1->code(env);
+  operand op2_ = e2->code(env);
+  operand sub_res = vp.sub(op1_, op2_);
+
+  return sub_res;
 }
 
 operand mul_class::code(CgenEnvironment *env) {
@@ -784,7 +912,14 @@ operand mul_class::code(CgenEnvironment *env) {
     std::cerr << "mul" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand op1_ = e1->code(env);
+  operand op2_ = e2->code(env);
+  operand mul_res = vp.mul(op1_, op2_);
+
+  return mul_res;
 }
 
 operand divide_class::code(CgenEnvironment *env) {
@@ -792,7 +927,23 @@ operand divide_class::code(CgenEnvironment *env) {
     std::cerr << "div" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand numerator_ = e1->code(env);
+  operand demoninator_ = e2->code(env);
+  int_value zero(0);
+  operand test_zero = vp.icmp(EQ, demoninator_, zero);
+
+  label abort_true = "abort";
+  label ok_false = env->new_ok_label();
+
+  vp.branch_cond(*env->cur_stream, test_zero, abort_true, ok_false);
+
+  vp.begin_block(ok_false);
+  operand div_res = vp.div(numerator_, demoninator_);
+
+  return div_res;
 }
 
 operand neg_class::code(CgenEnvironment *env) {
@@ -800,7 +951,14 @@ operand neg_class::code(CgenEnvironment *env) {
     std::cerr << "neg" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  int_value op1_(0);
+  operand op2_ = e1->code(env);
+  operand neg_res = vp.sub(op1_, op2_);
+
+  return neg_res;
 }
 
 operand lt_class::code(CgenEnvironment *env) {
@@ -808,7 +966,14 @@ operand lt_class::code(CgenEnvironment *env) {
     std::cerr << "lt" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand op1_ = e1->code(env);
+  operand op2_ = e2->code(env);
+  operand lt_res = vp.icmp(LT, op1_, op2_);
+
+  return lt_res;
 }
 
 operand eq_class::code(CgenEnvironment *env) {
@@ -816,7 +981,13 @@ operand eq_class::code(CgenEnvironment *env) {
     std::cerr << "eq" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+  ValuePrinter vp(*env->cur_stream);
+  operand op1_ = e1->code(env);
+  operand op2_ = e2->code(env);
+  operand eq_res = vp.icmp(EQ, op1_, op2_);
+
+  return eq_res;
 }
 
 operand leq_class::code(CgenEnvironment *env) {
@@ -824,7 +995,14 @@ operand leq_class::code(CgenEnvironment *env) {
     std::cerr << "leq" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand op1_ = e1->code(env);
+  operand op2_ = e2->code(env);
+  operand leq_res = vp.icmp(LE, op1_, op2_);
+
+  return leq_res;
 }
 
 operand comp_class::code(CgenEnvironment *env) {
@@ -832,7 +1010,14 @@ operand comp_class::code(CgenEnvironment *env) {
     std::cerr << "complement" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand op1_ = e1->code(env);
+  bool_value op2_(true, true);
+  operand comp_res = vp.xor_in(op1_, op2_);
+
+  return comp_res;
 }
 
 operand int_const_class::code(CgenEnvironment *env) {
@@ -840,7 +1025,16 @@ operand int_const_class::code(CgenEnvironment *env) {
     std::cerr << "Integer Constant" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  std::string int_val = token->get_string();
+  const char *string_to_char = int_val.c_str();
+
+  int real_val = std::atoi(string_to_char);
+  int val_constraints = std::max(std::numeric_limits<int>::min(), std::min(real_val, std::numeric_limits<int>::max()));
+  int_value res(val_constraints);
+
+  return res;
 }
 
 operand bool_const_class::code(CgenEnvironment *env) {
@@ -848,7 +1042,13 @@ operand bool_const_class::code(CgenEnvironment *env) {
     std::cerr << "Boolean Constant" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  if (val) {
+    return bool_value(true, true);
+  } 
+  
+  return bool_value(false, true);
 }
 
 operand object_class::code(CgenEnvironment *env) {
@@ -856,7 +1056,14 @@ operand object_class::code(CgenEnvironment *env) {
     std::cerr << "Object" << endl;
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
-  return operand();
+  // return operand();
+
+  ValuePrinter vp(*env->cur_stream);
+  operand *op = env->lookup(name);
+  op_type tp_ = op->get_type().get_deref_type();
+  operand object_res = vp.load(tp_, *op);
+
+  return object_res;
 }
 
 operand no_expr_class::code(CgenEnvironment *env) {

@@ -192,7 +192,36 @@ public:
 
   // Must return the CgenNode for a class given the symbol of its name
   CgenNode *type_to_class(Symbol t);
+
   // ADD CODE HERE
+  // 作用域管理
+  void add_binding(Symbol identifier, operand *op) {
+      var_table.addid(identifier, op);
+  }
+
+  void open_scope() {
+      var_table.enterscope(); 
+  }
+
+  void close_scope() {
+      var_table.exitscope(); 
+  }
+
+  string new_loop_label() {
+    return new_label("loop", true);
+  }
+
+  string new_true_label() {
+    return new_label("true", true);
+  }
+
+  string new_false_label() {
+    return new_label("false", true);
+  }
+
+  string new_end_label() {
+    return new_label("end", true);
+  }
 };
 
 // Utitlity function
