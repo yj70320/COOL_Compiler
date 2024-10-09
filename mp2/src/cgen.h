@@ -194,7 +194,8 @@ public:
   CgenNode *type_to_class(Symbol t);
 
   // ADD CODE HERE
-  // 作用域管理
+
+  // Scope management
   void add_binding(Symbol identifier, operand *op) {
       var_table.addid(identifier, op);
   }
@@ -207,6 +208,7 @@ public:
       var_table.exitscope(); 
   }
 
+  // Label generation functions
   string new_loop_label() {
     return new_label("loop", true);
   }
