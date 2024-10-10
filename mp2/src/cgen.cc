@@ -853,7 +853,7 @@ operand let_class::code(CgenEnvironment *env) {
 
   // store value
   if (init_op.is_empty()) 
-  { // 没有初始值
+  { 
     if (id_type.get_id() == INT32 && id_type.get_name() == "i32") {
       vp.store(*env->cur_stream, i32_0, id_op);
     } else if (id_type.get_id() == INT1 && id_type.get_name() == "i1") {
@@ -861,15 +861,13 @@ operand let_class::code(CgenEnvironment *env) {
     }
   } 
   else 
-  {  // 有初始值
+  { 
     vp.store(*env->cur_stream, init_op, id_op);
   }
 
-  // 添加绑定
   Symbol identifier = this->identifier;   
   env->add_binding(identifier, &id_op);
 
-  // 进入 scope, 执行主体代码, 离开 scope
   env->open_scope();  
   operand let_res = body->code(env);  
   env->close_scope();
@@ -1200,6 +1198,8 @@ void assign_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "assign" << endl;
   
   // ADD ANY CODE HERE
+  expr->make_alloca(env);
+  set_expr_type(env, expr->get_expr_type(env));
 }
 
 void cond_class::make_alloca(CgenEnvironment *env) {
@@ -1207,6 +1207,18 @@ void cond_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "cond" << endl;
 
   // ADD ANY CODE HERE
+
+  ValuePrinter vp(*env->cur_stream);
+
+  pred->make_alloca(env);
+  then_exp->make_alloca(env);
+  else_exp->make_alloca(env);
+
+  result_type = then_exp->get_expr_type(env);
+  set_expr_type(env, result_type);
+
+  // make alloca 
+  res_ptr = vp.alloca_mem(result_type);
 }
 
 void loop_class::make_alloca(CgenEnvironment *env) {
@@ -1214,6 +1226,13 @@ void loop_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "loop" << endl;
 
   // ADD ANY CODE HERE
+  ValuePrinter vp(*env->cur_stream);
+
+  op_type int_(INT32);
+  set_expr_type(env, int_);
+
+  pred->make_alloca(env);
+  body->make_alloca(env);
 }
 
 void block_class::make_alloca(CgenEnvironment *env) {
@@ -1221,6 +1240,16 @@ void block_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "block" << endl;
 
   // ADD ANY CODE HERE
+  int i = 0;
+  for(i = body->first(); body->more(i) && body->more(i+1); i = body->next(i)) {
+    auto expr_iter = body->nth(i);
+    expr_iter->make_alloca(env);
+  }
+
+  auto expr_iter = body->nth(i);
+  expr_iter->make_alloca(env);
+
+  set_expr_type(env, expr_iter->get_expr_type(env));
 }
 
 void let_class::make_alloca(CgenEnvironment *env) {
@@ -1228,6 +1257,29 @@ void let_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "let" << endl;
 
   // ADD ANY CODE HERE
+  init->make_alloca(env);
+
+  ValuePrinter vp(*env->cur_stream);
+  std::string type_name = type_decl->get_string();
+
+  if (type_name == "Int") {
+    op_type i32_type(INT32);
+    operand alloc_int = vp.alloca_mem(i32_type);
+    id_type = i32_type;
+    id_op = alloc_int;
+    env->var_tp_add_binding(identifier, &i32_type); 
+  } else if (type_name == "Bool") {
+    op_type i1_type(INT1);
+    operand alloc_bool = vp.alloca_mem(i1_type);
+    id_type = i1_type;
+    id_op = alloc_bool;
+    env->var_tp_add_binding(identifier, &i1_type);
+  }
+
+  env->var_tp_open_scope();
+  body->make_alloca(env);
+  set_expr_type(env, body->get_expr_type(env));
+  env->var_tp_close_scope();
 }
 
 void plus_class::make_alloca(CgenEnvironment *env) {
@@ -1235,6 +1287,10 @@ void plus_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "plus" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  e2->make_alloca(env);
+
+  set_expr_type(env, e1->get_expr_type(env));
 }
 
 void sub_class::make_alloca(CgenEnvironment *env) {
@@ -1242,6 +1298,10 @@ void sub_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "sub" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  e2->make_alloca(env);
+
+  set_expr_type(env, e1->get_expr_type(env));
 }
 
 void mul_class::make_alloca(CgenEnvironment *env) {
@@ -1249,6 +1309,10 @@ void mul_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "mul" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  e2->make_alloca(env);
+
+  set_expr_type(env, e1->get_expr_type(env));
 }
 
 void divide_class::make_alloca(CgenEnvironment *env) {
@@ -1256,6 +1320,10 @@ void divide_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "div" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  e2->make_alloca(env);
+
+  set_expr_type(env, e1->get_expr_type(env));
 }
 
 void neg_class::make_alloca(CgenEnvironment *env) {
@@ -1263,6 +1331,8 @@ void neg_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "neg" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  set_expr_type(env, e1->get_expr_type(env));
 }
 
 void lt_class::make_alloca(CgenEnvironment *env) {
@@ -1270,6 +1340,11 @@ void lt_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "lt" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  e2->make_alloca(env);
+
+  op_type bool_(INT1);
+  set_expr_type(env, bool_);
 }
 
 void eq_class::make_alloca(CgenEnvironment *env) {
@@ -1277,6 +1352,11 @@ void eq_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "eq" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  e2->make_alloca(env);
+
+  op_type bool_(INT1);
+  set_expr_type(env, bool_);
 }
 
 void leq_class::make_alloca(CgenEnvironment *env) {
@@ -1284,6 +1364,11 @@ void leq_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "leq" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  e2->make_alloca(env);
+
+  op_type bool_(INT1);
+  set_expr_type(env, bool_);
 }
 
 void comp_class::make_alloca(CgenEnvironment *env) {
@@ -1291,6 +1376,8 @@ void comp_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "complement" << endl;
 
   // ADD ANY CODE HERE
+  e1->make_alloca(env);
+  set_expr_type(env, e1->get_expr_type(env));
 }
 
 void int_const_class::make_alloca(CgenEnvironment *env) {
@@ -1298,6 +1385,8 @@ void int_const_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "Integer Constant" << endl;
   
   // ADD ANY CODE HERE
+  op_type int_(INT32);
+  set_expr_type(env, int_);
 }
 
 void bool_const_class::make_alloca(CgenEnvironment *env) {
@@ -1305,6 +1394,8 @@ void bool_const_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "Boolean Constant" << endl;
   
   // ADD ANY CODE HERE
+  op_type bool_(INT1);
+  set_expr_type(env, bool_);
 }
 
 void object_class::make_alloca(CgenEnvironment *env) {
@@ -1312,6 +1403,10 @@ void object_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "Object" << endl;
   
   // ADD ANY CODE HERE
+  operand* op = env->lookup(name);
+  op_type tp = op->get_type();
+
+  set_expr_type(env, tp);
 }
 
 void no_expr_class::make_alloca(CgenEnvironment *env) {
@@ -1319,6 +1414,7 @@ void no_expr_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "No_expr" << endl;
   
   // ADD ANY CODE HERE
+  set_expr_type(env, op_type());
 }
 
 void static_dispatch_class::make_alloca(CgenEnvironment *env) {

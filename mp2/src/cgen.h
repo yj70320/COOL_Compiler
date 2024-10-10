@@ -157,6 +157,7 @@ class CgenEnvironment {
 private:
   // mapping from variable names to memory locations
   cool::SymbolTable<Symbol, operand> var_table;
+  cool::SymbolTable<Symbol, op_type> var_tp_table;
 
   // Keep counters for unique name generation in the current method
   int block_count;
@@ -196,34 +197,19 @@ public:
   // ADD CODE HERE
 
   // Scope management
-  void add_binding(Symbol identifier, operand *op) {
-      var_table.addid(identifier, op);
-  }
-
-  void open_scope() {
-      var_table.enterscope(); 
-  }
-
-  void close_scope() {
-      var_table.exitscope(); 
-  }
+  void add_binding(Symbol identifier, operand *op) { var_table.addid(identifier, op); }
+  void open_scope() { var_table.enterscope(); }
+  void close_scope() { var_table.exitscope(); }
 
   // Label generation functions
-  string new_loop_label() {
-    return new_label("loop", true);
-  }
+  string new_loop_label() { return new_label("loop", true); }
+  string new_true_label() { return new_label("true", true); }
+  string new_false_label() { return new_label("false", true); }
+  string new_end_label() { return new_label("end", true); }
 
-  string new_true_label() {
-    return new_label("true", true);
-  }
-
-  string new_false_label() {
-    return new_label("false", true);
-  }
-
-  string new_end_label() {
-    return new_label("end", true);
-  }
+  void var_tp_add_binding(Symbol name, op_type *op) { var_tp_table.addid(name, op); }
+  void var_tp_open_scope() { var_tp_table.enterscope(); }
+  void var_tp_close_scope() { var_tp_table.exitscope(); }
 };
 
 // Utitlity function
