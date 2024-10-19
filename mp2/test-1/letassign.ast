@@ -1,0 +1,39 @@
+#5
+_program
+  #5
+  _class
+    Main
+    Object
+    "letassign.cl"
+    (
+    #4
+    _method
+      main
+      Int
+      #4
+      _let
+        x
+        Int
+        #3
+        _int
+          3
+        : Int
+        #4
+        _let
+          y
+          Int
+          #3
+          _assign
+            x
+            #3
+            _int
+              5
+            : Int
+          : Int
+          #3
+          _int
+            5
+          : Int
+        : Int
+      : Int
+    )

@@ -127,6 +127,8 @@ typedef Cases_class *Cases;
   virtual void dump_with_types(ostream &, int) = 0;                            \
   virtual void make_alloca(CgenEnvironment *) = 0;                             \
   virtual operand code(CgenEnvironment *) = 0;                                 \
+  virtual op_type get_expr_type(CgenEnvironment *) = 0;                        \
+  virtual void    set_expr_type(CgenEnvironment *, op_type) = 0;               \
   void dump_type(ostream &, int);                                              \
   Expression_class() { type = (Symbol)NULL; }
 
@@ -139,9 +141,13 @@ typedef Cases_class *Cases;
   int no_code() { return 1; } /* ## */
 
 #define cond_EXTRAS                                                            \
-  operand alloca_op;
+  operand alloca_op;                                                           \
+  op_type result_type;                                                         \
+  operand res_ptr;
 #define let_EXTRAS                                                             \
-  operand alloca_op;
+  operand alloca_op;                                                           \
+    op_type id_type;                                                           \
+  operand id_op;
 #define typcase_EXTRAS                                                         \
   operand alloca_op;
 
