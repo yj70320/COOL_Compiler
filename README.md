@@ -1,21 +1,29 @@
-This project is for COSC375 Compiler Construction, by Yijun Wu
+This project is for COSC375 Compiler Construction.
 
 The goal is to write a compiler to translate COOL to MIPS.
 
 
-MP1: lexer and parser
+mp1: lexer and parser
+
+testing:
 
 compile lexer: make lexer
 run lexer: ./lexer filename.cl
-
 compile parser: make parser
 run parser: ./lexer filename.cl |./parser
 
-When run parser, if the program has more than 20 errors, it will list first 20 errors, and stop the program. If errors number is under 20, it will show all the error.
 
-If there are any errors in the program, after the error messages, the parser will show "Compilation halted due to lex and parse errors." and stop the program. This is from /cool-support/src/parser-phase.cc file.
+Hello< Yijun. Thank you for the good work you are doing. Keep up with the effort and be sure to appreciate how much you would learned by the end of the course. Relax for a bit and concentrate on your homeworks while l post MP3.
+Good Job.
 
-test files:
-flex_test.cl
-bison_test_good.cl
-bison_test_bad.cl
+
+
+mp2: code generation 1 (cgen-1)
+
+testing:
+
+make filename.ll
+make filename.bc
+make filename.s
+
+

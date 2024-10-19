@@ -1,0 +1,198 @@
+README file for Machine Project Assignments 2 and 3
+===========================================================
+
+
+------------------------------------------------------------
+Information about the differences between MP 2 and MP 3
+------------------------------------------------------------
+
+MP 2:
+  This is Phase 1.  In this phase, you will translate
+  a subset of COOL that only includes a single class (Main) with a single
+  method (Main.main) and no attributes.  You will ignore most object-related
+  language features including case, new, dispatch, static dispatch, isvoid,
+  object, and strings.
+
+MP 3:
+  This is Phase 2, and it requires you to finish the translator to support all
+  the remaining features of COOL.
+
+Conditional Compilation
+-----------------------
+
+In the primary source files, cgen.cc and cgen.h, you will see some conditional
+compilation using the following directives:
+   #ifndef MP3 ... #endif
+or
+   #ifdef  MP3 ... #endif
+These directives enclose code that is only required in Phase 1 or only
+required in Phase 2, respectively.  In MP 2, you should not have to write
+any code that is enclosed in #ifdef MP3  ... #endif.
+In MP 3, you should be able to ignore the former but will have to
+add the latter.
+
+The Makefile in src is set up so that you can compile phase 1 by
+saying 'make cgen-1' and phase 2 by saying 'make cgen-2'.  The symbol
+MP3 is defined on the command line in the second case but not the
+first.
+
+
+------------------------------------------------------------
+Common information for both MP 2 and MP 3
+------------------------------------------------------------
+
+
+ cgen.h
+        cgen.h is the header file for the code generator. Feel free to
+        add anything you need.  It contains partial declarations of the
+	following key classes, which you must complete:
+
+        - class CGenClassTable: One per input program.
+	    This contains the inheritance tree of 'CGenNode's
+	    It also contains a symbol table to map class 'Symbol's
+	    to CGenNode objects.
+
+        - class CGenNode: One per class of the input program.
+	    This represents one "node" in the inheritance tree
+	    of classes. It contains the information extracted
+	    from the AST about the class needed for code gen.
+
+        - class CGenEnvironment: One per method; this must be passed 
+	    from expression node to expression node during the tree walk
+	    over the method body.  It contains a symbol table to map
+	    local (let) variable 'Symbol's to corresponding 'operand'
+	    objects.
+
+ cgen.cc
+        cgen.cc is the skeleton file for the code generator. 
+
+        Code generation proceeds roughly as follows:
+
+        - Our compiler driver (mp2/cool-support/src/cgen-phase.cc;
+	  see below) calls program_class::cgen(ostream &os)
+        - program_class::cgen creates a new CgenClassTable
+        - CgenClassTable constructor does code generation for the program.
+          Code generation involves the following tasks:
+
+          - create the class tree from the class list
+
+          - perform a first setup pass on all the nodes in the tree which
+            includes laying out the features of the class
+
+          - create global constants
+
+          - perform a codegen pass on all the nodes in the tree
+            - emit code for each method in the class
+              - emit code for the expression tree in the method body 
+		using a recursive tree walk implemented by the 
+	        code(CgenEnvironment *)
+                virtual functions defined by every Expression node.
+
+        This is a high level description of what should happen in your
+        compiler and the order in which it will occur.  Of course, you will 
+        need to add some of your own functions and data members to accomplish 
+        these tasks - filling in the details is your job.
+
+ cool-tree.handcode.h
+        cool-tree.handcode.h contains
+        the declarations and definitions of code generation AST nodes.
+        You may modify these as you wish, but be sure to do "make clean"
+        after doing so.  Place all method definitions in cgen.cc
+
+ coolrt.c
+        Cool runtime implemented in C. Modify to match your generated
+        code (MP 3 only).
+
+ coolrt.h
+        Cool runtime type declarations. Modify to match your generated
+        code (MP 3 only).
+
+ from the support code cgen-phase.cc:
+        cgen-phase.cc supplies the driver for the compiler. You should
+        not modify this code. 
+
+ cgen flags
+        The final compiled and linked code generator is called cgen.
+        This program will accept several command-line flags.  For this
+        assignment, -c (code generator debug) may be useful as it sets a global
+        variable cgen_debug to true (1).  If you want your code
+        generator to print debug information when the option is set,
+        write your debug code in the following format:
+
+              if (cgen_debug)
+              {
+                ...
+              }
+
+
+MP 2 和 MP 3 之间的差异信息
+
+MP 2：
+这是第 1 阶段。在此阶段，你将翻译仅包含一个类（Main）及一个方法（Main.main）且没有属性的 COOL 子集。你将忽略大多数与对象相关的语言特性，包括 case、new、dispatch、static dispatch、isvoid、object 和 strings。
+
+MP 3：
+这是第 2 阶段，需要你完成翻译器以支持 COOL 的所有剩余特性。
+
+条件编译
+
+在主要的源文件 cgen.cc 和 cgen.h 中，你会看到一些条件编译，使用以下指令：
+#ifndef MP3 ... #endif
+或
+#ifdef MP3 ... #endif
+这些指令封闭了仅在第 1 阶段或仅在第 2 阶段需要的代码。在 MP 2 中，你不必编写被 #ifdef MP3 ... #endif 封闭的任何代码。
+在 MP 3 中，你可以忽略前者，但需要添加后者。
+
+src 目录中的 Makefile 设置为可以通过执行 make cgen-1 来编译第 1 阶段，通过执行 make cgen-2 来编译第 2 阶段。在第二种情况下，符号 MP3 在命令行中定义，而在第一种情况下则没有定义。
+
+MP 2 和 MP 3 的共同信息
+
+cgen.h
+cgen.h 是代码生成器的头文件。你可以随意添加所需的内容。它包含以下关键类的部分声明，你必须完成这些类：
+
+class CGenClassTable：每个输入程序一个。
+该类包含 CGenNode 的继承树，还包含一个符号表，将类符号映射到 CGenNode 对象。
+
+class CGenNode：每个输入程序的每个类一个。
+该类表示类继承树中的一个“节点”。它包含从 AST 中提取的关于类的用于代码生成的信息。
+
+class CGenEnvironment：每个方法一个；在对方法主体进行树遍历时，必须在表达式节点之间传递该类。它包含一个符号表，将局部（let）变量符号映射到对应的操作数对象。
+
+cgen.cc
+cgen.cc 是代码生成器的骨架文件。
+
+代码生成过程大致如下：
+
+我们的编译器驱动程序（mp2/cool-support/src/cgen-phase.cc；见下文）调用 program_class::cgen(ostream &os)
+
+program_class::cgen 创建一个新的 CgenClassTable
+
+CgenClassTable 构造函数对程序进行代码生成。代码生成涉及以下任务：
+
+从类列表创建类树
+
+对树中的所有节点执行第一个设置遍历，包括布局类的特性
+
+创建全局常量
+
+对树中的所有节点执行代码生成遍历
+
+为类中的每个方法生成代码
+
+使用每个表达式节点定义的虚函数 code(CgenEnvironment *)，通过递归树遍历为方法主体中的表达式树生成代码。
+
+这是你编译器中应该发生的事情以及发生顺序的高级描述。当然，你需要添加一些自己的函数和数据成员来完成这些任务——填补细节是你的工作。
+
+cool-tree.handcode.h
+cool-tree.handcode.h 包含代码生成 AST 节点的声明和定义。你可以根据需要进行修改，但修改后务必执行“make clean”。将所有方法定义放在 cgen.cc 中。
+
+coolrt.c
+用 C 语言实现的 Cool 运行时。在 MP 3 中修改以匹配你生成的代码。
+
+coolrt.h
+Cool 运行时类型声明。在 MP 3 中修改以匹配你生成的代码。
+
+来自支持代码 cgen-phase.cc
+cgen-phase.cc 提供了编译器的驱动程序。你不应修改此代码。
+
+cgen 标志
+最终编译并链接的代码生成器称为 cgen。此程序将接受几个命令行标志。对于本次作业，-c（代码生成器调试）可能有用，因为它将全局变量 cgen_debug 设置为 true（1）。如果你希望代码生成器在设置该选项时打印调试信息，请按以下格式编写调试代码：

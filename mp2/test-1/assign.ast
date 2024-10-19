@@ -1,0 +1,58 @@
+#8
+_program
+  #8
+  _class
+    Main
+    Object
+    "assign.cl"
+    (
+    #7
+    _method
+      main
+      Int
+      #6
+      _block
+        #3
+        _int
+          3
+        : Int
+        #4
+        _let
+          x
+          Int
+          #4
+          _int
+            3
+          : Int
+          #4
+          _let
+            x
+            Bool
+            #4
+            _no_expr
+            : _no_type
+            #4
+            _let
+              y
+              Int
+              #4
+              _int
+                3
+              : Int
+              #4
+              _assign
+                y
+                #4
+                _int
+                  3
+                : Int
+              : Int
+            : Int
+          : Int
+        : Int
+        #5
+        _int
+          7
+        : Int
+      : Int
+    )
