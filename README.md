@@ -8,8 +8,11 @@ mp1: lexer and parser
 testing:
 
 compile lexer: make lexer
+
 run lexer: ./lexer filename.cl
+
 compile parser: make parser
+
 run parser: ./lexer filename.cl |./parser
 
 
@@ -23,7 +26,15 @@ mp2: code generation 1 (cgen-1)
 testing:
 
 make filename.ll
+
 make filename.bc
+
 make filename.s
 
 
+
+mp3: code generation
+
+original file: reference-binaries, test-2, cgen-case.cc, cool-tree.handcode.h
+
+copy from mp2: cool-support, reference-binaries, src, Makefile.common, README.md
