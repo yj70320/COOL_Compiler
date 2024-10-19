@@ -3,7 +3,6 @@ This project is for COSC375 Compiler Construction.
 The goal is to write a compiler to translate COOL to MIPS.
 
 
-=========================================================================
 mp1: lexer and parser
 =========================================================================
 
@@ -22,7 +21,6 @@ Hello< Yijun. Thank you for the good work you are doing. Keep up with the effort
 Good Job.
 
 
-=========================================================================
 mp2: code generation 1 (cgen-1)
 =========================================================================
 
@@ -35,7 +33,6 @@ make filename.bc
 make filename.s
 
 
-=========================================================================
 mp3: code generation
 =========================================================================
 
