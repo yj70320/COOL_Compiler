@@ -111,7 +111,8 @@ typedef Cases_class *Cases;
   Symbol get_type_decl() { return type_decl; }                                 \
   Expression get_expr() { return expr; }                                       \
   void make_alloca(CgenEnvironment *);                                         \
-  operand alloc_op;                                                            \
+  op_type alloca_type;                                                         \
+  operand alloca_op;                                                           \
   operand code(operand expr_val, operand tag, const op_type join_type,         \
                CgenEnvironment *env);                                          \
   void dump_with_types(ostream &, int);
@@ -127,8 +128,6 @@ typedef Cases_class *Cases;
   virtual void dump_with_types(ostream &, int) = 0;                            \
   virtual void make_alloca(CgenEnvironment *) = 0;                             \
   virtual operand code(CgenEnvironment *) = 0;                                 \
-  virtual op_type get_expr_type(CgenEnvironment *) = 0;                        \
-  virtual void    set_expr_type(CgenEnvironment *, op_type) = 0;               \
   void dump_type(ostream &, int);                                              \
   Expression_class() { type = (Symbol)NULL; }
 
@@ -141,14 +140,11 @@ typedef Cases_class *Cases;
   int no_code() { return 1; } /* ## */
 
 #define cond_EXTRAS                                                            \
-  operand alloca_op;                                                           \
-  op_type result_type;                                                         \
-  operand res_ptr;
+  operand alloca_op;
 #define let_EXTRAS                                                             \
-  operand alloca_op;                                                           \
-    op_type id_type;                                                           \
-  operand id_op;
+  operand alloca_op;
 #define typcase_EXTRAS                                                         \
+  op_type alloca_type;                                                         \
   operand alloca_op;
 
 #endif /* COOL_TREE_HANDCODE_H */

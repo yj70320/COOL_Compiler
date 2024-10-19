@@ -3,6 +3,9 @@ This project is for COSC375 Compiler Construction.
 The goal is to write a compiler to translate COOL to MIPS.
 
 
+================================================================================
+================================================================================
+
 mp1: lexer and parser
 
 testing:
@@ -20,6 +23,8 @@ Hello< Yijun. Thank you for the good work you are doing. Keep up with the effort
 Good Job.
 
 
+================================================================================
+================================================================================
 
 mp2: code generation 1 (cgen-1)
 
@@ -32,9 +37,28 @@ make filename.bc
 make filename.s
 
 
+================================================================================
+================================================================================
 
 mp3: code generation
 
-original file: reference-binaries, test-2, cgen-case.cc, cool-tree.handcode.h
+original zip file:
 
-copy from mp2: cool-support, reference-binaries, src, Makefile.common, README.md
+(1) file reference-binaries
+
+(2) test-2
+
+(3) cgen-case.cc
+
+(4) cool-tree.handcode.h: copied to src
+
+
+copy from mp2:
+
+(1) file cool-support
+
+(2) file src: replace cool-tree.handcode.h by the new version from mp3.tar1.gz
+
+(3) Makefile.common
+
+(4) README.md
