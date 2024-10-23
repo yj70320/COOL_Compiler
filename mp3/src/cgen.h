@@ -93,6 +93,41 @@ public:
   void codeGenMainmain();
 #endif
 
+
+  ostream *ct_stream;
+  struct Method {
+    method_class *method;
+    Symbol name;
+    Expression expr;
+    std::vector<op_type> arg_types;
+    std::vector<operand> args;
+    op_type ret_ty;
+
+    op_func_type func_ty;
+    op_func_ptr_type func_ptr_ty;
+    const_value func_val;
+    int vtable_idx;
+  };
+  std::vector<Method> member_methods;
+  struct Attr {
+    attr_class *attr;
+    Symbol name;
+    op_type type;
+    Expression init;
+    int attr_idx;
+  };
+  std::vector<Attr> member_attrs;
+  Method *get_method(Symbol target_name) {
+    for (auto &mm : member_methods)
+      if (mm.name == target_name) return &mm;
+    return nullptr;
+  }
+  Attr *get_attr(Symbol target_name) {
+    for (auto &mm : member_attrs)
+      if (mm.name == target_name) return &mm;
+    return nullptr;
+  }
+
 private:
   CgenNode *parentnd;       // Parent of class
   List<CgenNode> *children; // Children of class
@@ -104,6 +139,10 @@ private:
   int max_child;
 
   // ADD CODE HERE
+public:
+  string vtable_type_name;
+  op_type vtable_ptr_ty;
+  string prototype_name;
 
 public:
   // COMPLETE FUNCTIONS

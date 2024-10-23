@@ -19,7 +19,11 @@ const char default_string[] = "";
 
 /* Class vtable prototypes */
 const Object_vtable _Object_vtable_prototype = {
-    /* ADD CODE HERE */
+  /* ADD CODE HERE */
+  printf("Abort called from class %s\n",
+         !self ? "Unknown" : self->vtblptr->name);
+  exit(1);
+  return self;
 };
 
 /* ADD CODE HERE FOR MORE VTABLE PROTOTYPES */
@@ -150,3 +154,76 @@ int IO_in_int(IO *self) {
 /* ADD CODE HERE FOR MORE METHODS OF CLASS IO */
 
 /* ADD CODE HERE FOR METHODS OF OTHER BUILTIN CLASSES */
+
+Object *Object_new() {
+  Object *ret = (Object *)malloc(sizeof(Object));
+  ret->vtblptr = &_Object_vtable_prototype;
+  return ret;
+}
+Object *Object_copy(Object *src) {
+  Object *ret = (Object *)malloc(src->vtblptr->size);
+  memcpy(ret, src, src->vtblptr->size);
+  return ret;
+}
+
+Int *Int_new() {
+  Int *ret = (Int *)malloc(sizeof(Int));
+  ret->vtblptr = &_Int_vtable_prototype;
+  ret->val = 0;
+  return ret;
+}
+
+Bool *Bool_new() {
+  Bool *ret = (Bool *)malloc(sizeof(Bool));
+  ret->vtblptr = &_Bool_vtable_prototype;
+  ret->val = false;
+  return ret;
+}
+
+char *empty_string = (char *)"";
+String *String_new() {
+  String *ret = (String *)malloc(sizeof(String));
+  ret->vtblptr = &_String_vtable_prototype;
+  ret->val = empty_string;
+  return ret;
+}
+int String_length(String *src) { return strlen(src->val); }
+String *String_concat(String *src1, String *src2) {
+  String *newstr = String_new();
+  newstr->val =
+      (char *)calloc(String_length(src1) + String_length(src2) + 1, 1);
+  strcat(newstr->val, src1->val);
+  strcat(newstr->val, src2->val);
+  return newstr;
+}
+String *String_substr(String *src, int i1, int i2) {
+  String *newstr = String_new();
+  int length = String_length(src);
+  if (length < i1 + i2) {
+    fprintf(stderr, "At %s(line %d): substring index oob\n", __FILE__,
+            __LINE__);
+    fprintf(stderr, "Len: %d, i1: %d, i2: %d\n", length, i1, i2);
+    fprintf(stderr, "string: %s\n", src->val);
+    abort();
+  }
+  newstr->val = (char *)calloc(String_length(src), 1);
+  newstr->val = strncpy(newstr->val, src->val + i1, i2);
+  return newstr;
+}
+
+IO *IO_new() {
+  IO *ret = (IO *)malloc(sizeof(IO));
+  ret->vtblptr = &_IO_vtable_prototype;
+  return ret;
+}
+Int *create_Int(int x) {
+  Int *i = Int_new();
+  i->val = x;
+  return i;
+}
+
+Bool *create_Bool(bool x) {
+  Bool *i = Bool_new();
+  i->val = x;
+  return i;
+}

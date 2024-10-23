@@ -82,13 +82,19 @@ typedef Cases_class *Cases;
   virtual void code(CgenEnvironment *env) = 0;
 
 #define Feature_SHARED_EXTRAS                                                  \
+  Symbol get_name() { return name; }                                           \
   void dump_with_types(ostream &, int);                                        \
   void layout_feature(CgenNode *cls);                                          \
   virtual void make_alloca(CgenEnvironment *env);                              \
   void code(CgenEnvironment *env);
 
+#define attr_EXTRAS                                                            \
+  virtual Symbol get_type_decl() {return type_decl;}                           \
+  virtual Expression get_init() {return init;}
+
 #define method_EXTRAS                                                          \
-  virtual Symbol get_return_type() { return return_type; }
+  virtual Symbol get_return_type() { return return_type; }                     \
+  int n_local_var=0;
 
 #define Formal_EXTRAS                                                          \
   virtual Symbol get_type_decl() = 0; /* ## */                                 \
