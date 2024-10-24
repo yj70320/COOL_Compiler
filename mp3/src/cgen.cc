@@ -574,7 +574,7 @@ void CgenClassTable::code_main(){
     vp.define({INT32}, "main", {});
     vp.begin_block("entry");
 
-#ifndef MP3
+  #ifndef MP3
   // Get the address of the string "Main_main() returned %d\n" using
   // getelementptr
 
@@ -595,12 +595,13 @@ void CgenClassTable::code_main(){
       vp.getelementptr(msg_ty, msg_glob, int_value(0), int_value(0), INT8_PTR);
   vp.call({INT8_PTR, {VAR_ARG}}, {INT32}, "printf", true, {msg_arr_ptr, ret});
 
-#else
+  #else
   // MP 3
+  op_type main_return_type("Object*");
   operand main_obj = vp.call({{}}, {"Main*"}, "Main_new", true, {});
   vp.call({{"Main*"}}, main_return_type, "Main_main", true, {main_obj});
 
-#endif
+  #endif
   vp.ret(int_value(0));
   vp.end_define();
 
@@ -875,7 +876,7 @@ void CgenNode::layout_features() {
 // code-gen function main() in class Main
 //
 void CgenNode::codeGenMainmain() {
-  ValuePrinter vp;
+  ValuePrinter vp(*ct_stream);
   // In Phase 1, this can only be class Main. Get method_class for main().
   assert(std::string(this->name->get_string()) == std::string("Main"));
   method_class *mainMethod = (method_class *)features->nth(features->first());
@@ -920,7 +921,8 @@ CgenNode *CgenEnvironment::op_type_to_class(op_type ty) {
 
   if (id == INT32) return type_to_class(Int);
   if (id == INT1) return type_to_class(Bool);
-  Symbol s = idtable.lookup_string(ty.get_name().substr(1).c_str());
+  // Symbol s = idtable.lookup_string(ty.get_name().substr(1).c_str());
+  Symbol s = idtable.lookup_string(const_cast<char*>(ty.get_name().c_str()));
   return type_to_class(s);
 }
 
@@ -1069,21 +1071,67 @@ void method_class::code(CgenEnvironment *env) {
     std::cerr << "method" << endl;
 
   // ADD CODE HERE
-  ValuePrinter vp(*env->cur_stream);
 
-  // make alloca for all exp
+  vp_init;
+  auto &o = *(env->cur_stream);
+  string method_name =
+      env->get_class()->get_type_name() + "_" + name->get_string();
+
+  operand self_op({env->get_class()->get_type_name(), 1}, "self");
+
+  std::vector<operand> args{self_op};
+  operand *self_stack =
+      new operand{self_op.get_type().get_ptr_type(), "self_ptr"};
+  env->add_local(self, *self_stack);  // add self
+
+  for (auto formal : formals) {
+    op_type arg_ty =
+        sym_as_type_passable(formal->get_type_decl(), env->get_class());
+    operand arg(arg_ty, formal->get_name()->get_string());
+    operand *arg_stack = new operand{arg_ty.get_ptr_type(),
+                                     string(arg.get_name()).substr(1) + "_ptr"};
+    env->add_local(formal->get_name(), *arg_stack);
+    args.push_back(arg);
+  }
+
+  vp.define(return_type_boxed(sym_as_type(get_return_type(), env)), method_name,
+            args);
+  // Push args on stack
+  for (auto arg : args) {
+    op_type arg_ty = arg.get_type();
+    operand arg_stack = {arg_ty.get_ptr_type(),
+                         string(arg.get_name()).substr(1) + "_ptr"};
+    vp.alloca_mem(o, arg_ty, arg_stack);
+    vp.store(arg, arg_stack);
+    env->method_var_count++;
+  }
+
   expr->make_alloca(env);
+  operand ret_op = expr->code(env);
 
-  // generate code and get the ret val
-  operand res_Main_main = expr->code(env);
+  // derefence basic types on return
+  ret_op = conform(ret_op,
+                   return_type_boxed(sym_as_type(get_return_type(), env)), env);
+  ret_op = conform(ret_op,
+                   return_type_boxed(sym_as_type(get_return_type(), env)), env);
 
-  // ret
-  vp.ret(*env->cur_stream, res_Main_main);
+  vp.ret(ret_op);
+
+  vp.begin_block("abort");
+  vp.call({}, {VOID}, "abort", true, {});
+  vp.unreachable();
+  vp.end_define();
+  while (env->method_var_count-- > 0) env->kill_local();
 }
 
 //
 // Codegen for expressions.  Note that each expression has a value.
 //
+
+operand deref_stack(operand stack_ptr, CgenEnvironment *env) {
+  vp_init;
+  return vp.load(stack_ptr.get_type().get_deref_type(), stack_ptr);
+}
 
 operand assign_class::code(CgenEnvironment *env) {
   if (cgen_debug)
@@ -1092,20 +1140,26 @@ operand assign_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand assign_rhs = expr->code(env);
+  vp_init;
+  operand val = expr->code(env);
+  operand *dst_ptr = env->lookup(name);
 
-  operand *assign_lhs = env->lookup(name);
-  
-  if (assign_lhs == nullptr) {
-    std::cerr << "Error: Variable " << name << " not found in scope." << endl;
-    return assign_rhs;
-  }
-  
-  // after getting the location assign_lhs 
-  vp.store(*env->cur_stream, assign_rhs, *assign_lhs);
+  if (dst_ptr) {  // dst is local var
+    val = conform(val, dst_ptr->get_type().get_deref_type(), env);
+    vp.store(val, *dst_ptr);
+    return val;
 
-  return assign_rhs;
+  } else {  // dst is attribute
+    operand self_ptr = deref_stack(*(env->lookup(self)), env);
+    CgenNode::Attr *attr = env->get_class()->get_attr(name);
+
+    operand attr_ptr = vp.getelementptr(
+        self_ptr.get_type().get_deref_type(), self_ptr, int_value(0),
+        int_value(attr->attr_idx), attr->type.get_ptr_type());
+
+    val = conform(val, attr_ptr.get_type().get_deref_type(), env);
+    vp.store(val, attr_ptr);
+    return val;
   
 }
 
@@ -1116,34 +1170,39 @@ operand cond_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  
-  auto check_ = pred->code(env);
-  auto true_ = env->new_true_label();
-  auto false_ = env->new_false_label();
-  auto end_ = env->new_end_label();  
+  vp_init;
+  string true_label = env->new_label("if_true", 1),
+         false_label = env->new_label("if_false", 0),
+         done_label = env->new_label("end_if", 0);
 
-  vp.branch_cond(check_, true_, false_);
+  operand pr_val = pred->code(env);
+  // op_type ret_ty = sym_as_type(this->get_type(), env); //TODO ret ty wrong
+  // swap(null_stream, env->cur_stream);  // disable output for now
+  auto good_stream = env->cur_stream;
+  env->cur_stream = null_stream;
+  op_type ret_ty = then_exp->code(env).get_type();
+  *env->cur_stream << "aaaaaaaaaaaaaaa\n";
+  env->cur_stream = good_stream;
+  // swap(null_stream, env->cur_stream);  // enable again
 
-  vp.begin_block(true_);
-  auto then_ = then_exp->code(env);
+  operand dst = vp.alloca_mem(ret_ty);
+  vp.branch_cond(pr_val, true_label, false_label);
 
-  operand cond_res; 
-  operand res_ptr = vp.alloca_mem(then_.get_type()); 
-  op_type result_type = then_.get_type();
+  vp.begin_block(true_label);
+  operand then_op = then_exp->code(env);
+  then_op = conform(then_op, ret_ty, env);
+  vp.store(then_op, dst);
+  vp.branch_uncond(done_label);
 
-  vp.store(*env->cur_stream, then_, res_ptr);
-  vp.branch_uncond(end_);
+  vp.begin_block(false_label);
+  operand else_op = else_exp->code(env);
+  else_op = conform(else_op, ret_ty, env);
+  vp.store(else_op, dst);
+  vp.branch_uncond(done_label);
 
-  vp.begin_block(false_);
-  auto else_ = else_exp->code(env);
-  vp.store(*env->cur_stream, else_, res_ptr);
-  vp.branch_uncond(end_);
+  vp.begin_block(done_label);
+  return vp.load(ret_ty, dst);
 
-  vp.begin_block(end_);
-  cond_res = vp.load(result_type, res_ptr);
-
-  return cond_res;
 }
 
 operand loop_class::code(CgenEnvironment *env) {
@@ -1153,27 +1212,27 @@ operand loop_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
+  vp_init;
+  string body_label = env->new_label("loop_body", 1),
+         done_label = env->new_label("loop_done", 0);
 
-  auto loop_label = env->new_loop_label();
-  auto true_label = env->new_true_label();
-  auto false_label = env->new_false_label();
-  
-  vp.branch_uncond(loop_label);
-  
-  vp.begin_block(loop_label);
-  auto pred_op = pred->code(env);
-  vp.branch_cond(*env->cur_stream, pred_op, true_label, false_label);
+  auto good_stream = env->cur_stream;
+  env->cur_stream = null_stream;
+  op_type ret_ty = body->code(env).get_type();
+  *env->cur_stream << "aaaaaaaaaaaaaaa\n";
+  env->cur_stream = good_stream;
 
-  vp.begin_block(true_label);
-  body->code(env);
-  vp.branch_uncond(loop_label);
+  operand dst = vp.alloca_mem(ret_ty);
+  vp.branch_uncond(body_label);
 
-  vp.begin_block(false_label);
-  
-  int_value i32_0(0);
+  vp.begin_block(body_label);
+  operand body_op = body->code(env);
+  vp.store(body_op, dst);
+  operand pred_op = pred->code(env);
+  vp.branch_cond(pred_op, body_label, done_label);
 
-  return i32_0;
+  vp.begin_block(done_label);
+  return vp.load(ret_ty, dst);
 
 }
 
@@ -1203,38 +1262,30 @@ operand let_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
+  vp_init;
+  op_type ty = sym_as_type_passable(type_decl, env->get_class());
 
-  op_type id_type = op_type(INT32);
-  operand id_op = vp.alloca_mem(id_type);
+  operand val = init->code(env);
+  // operand dst_reg(ty, identifier->get_string());
+  operand &dst_stack = *(new operand{});
+  dst_stack = vp.alloca_mem(ty);
+  env->add_local(identifier, dst_stack);
 
-  int_value i32_0(0);
-  bool_value i1_false(false, true);
+  if (val.is_empty()) {  // fill in default value if not specified
+    if (str_eq(type_decl->get_string(), "Int"))
+      val = int_value(0);
+    else if (str_eq(type_decl->get_string(), "Bool"))
+      val = bool_value(false, true);
+    else
+      val = null_value{ty};
+  } else
+    val = conform(val, ty, env);
+  vp.store(val, dst_stack);
 
-  operand init_op = init->code(env);
+  operand ret = body->code(env);
+  env->kill_local();
 
-  // store value
-  if (init_op.is_empty()) 
-  { 
-    if (id_type.get_id() == INT32 && id_type.get_name() == "i32") {
-      vp.store(*env->cur_stream, i32_0, id_op);
-    } else if (id_type.get_id() == INT1 && id_type.get_name() == "i1") {
-      vp.store(*env->cur_stream, i1_false, id_op);
-    }
-  } 
-  else 
-  { 
-    vp.store(*env->cur_stream, init_op, id_op);
-  }
-
-  Symbol identifier = this->identifier;   
-  env->add_binding(identifier, &id_op);
-
-  env->open_scope();  
-  operand let_res = body->code(env);  
-  env->close_scope();
-
-  return let_res;
+  return ret;
 }
 
 operand plus_class::code(CgenEnvironment *env) {
@@ -1244,12 +1295,7 @@ operand plus_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand op1_ = e1->code(env);
-  operand op2_ = e2->code(env);
-  operand plus_res = vp.add(op1_, op2_);
-
-  return plus_res;
+  ret_code_bin_op(add);
 }
 
 operand sub_class::code(CgenEnvironment *env) {
@@ -1259,12 +1305,7 @@ operand sub_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand op1_ = e1->code(env);
-  operand op2_ = e2->code(env);
-  operand sub_res = vp.sub(op1_, op2_);
-
-  return sub_res;
+  ret_code_bin_op(sub);
 }
 
 operand mul_class::code(CgenEnvironment *env) {
@@ -1274,12 +1315,7 @@ operand mul_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand op1_ = e1->code(env);
-  operand op2_ = e2->code(env);
-  operand mul_res = vp.mul(op1_, op2_);
-
-  return mul_res;
+  ret_code_bin_op(mul);
 }
 
 operand divide_class::code(CgenEnvironment *env) {
@@ -1289,21 +1325,13 @@ operand divide_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand numerator_ = e1->code(env);
-  operand demoninator_ = e2->code(env);
-  int_value zero(0);
-  operand test_zero = vp.icmp(EQ, demoninator_, zero);
+  vp_init;
+  auto is_zero = vp.icmp(EQ, e2->code(env), int_value(0));
+  auto ok = env->new_ok_label();
+  vp.branch_cond(is_zero, "abort", ok);
 
-  label abort_true = "abort";
-  label ok_false = env->new_ok_label();
-
-  vp.branch_cond(*env->cur_stream, test_zero, abort_true, ok_false);
-
-  vp.begin_block(ok_false);
-  operand div_res = vp.div(numerator_, demoninator_);
-
-  return div_res;
+  vp.begin_block(ok);
+  ret_code_bin_op(div);
 }
 
 operand neg_class::code(CgenEnvironment *env) {
@@ -1313,12 +1341,7 @@ operand neg_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  int_value op1_(0);
-  operand op2_ = e1->code(env);
-  operand neg_res = vp.sub(op1_, op2_);
-
-  return neg_res;
+  ret_code_bin_op_vals(mul, int_value(-1), e1->code(env));
 }
 
 operand lt_class::code(CgenEnvironment *env) {
@@ -1328,12 +1351,7 @@ operand lt_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand op1_ = e1->code(env);
-  operand op2_ = e2->code(env);
-  operand lt_res = vp.icmp(LT, op1_, op2_);
-
-  return lt_res;
+  return nvp().icmp(LT, e1->code(env), e2->code(env));
 }
 
 operand eq_class::code(CgenEnvironment *env) {
@@ -1342,12 +1360,14 @@ operand eq_class::code(CgenEnvironment *env) {
   // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
   // MORE MEANINGFUL
   // return operand();
-  ValuePrinter vp(*env->cur_stream);
-  operand op1_ = e1->code(env);
-  operand op2_ = e2->code(env);
-  operand eq_res = vp.icmp(EQ, op1_, op2_);
-
-  return eq_res;
+  vp_init;
+  operand e1o = e1->code(env);
+  operand e2o = e2->code(env);
+  if (!e1o.get_type().is_same_with(e2o.get_type())) {
+    e1o = conform(e1o, {INT8_PTR}, env);
+    e2o = conform(e2o, {INT8_PTR}, env);
+  }
+  return vp.icmp(EQ, e1o, e2o);
 }
 
 operand leq_class::code(CgenEnvironment *env) {
@@ -1357,12 +1377,7 @@ operand leq_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand op1_ = e1->code(env);
-  operand op2_ = e2->code(env);
-  operand leq_res = vp.icmp(LE, op1_, op2_);
-
-  return leq_res;
+  return nvp().icmp(LE, e1->code(env), e2->code(env));
 }
 
 operand comp_class::code(CgenEnvironment *env) {
@@ -1372,12 +1387,7 @@ operand comp_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand op1_ = e1->code(env);
-  bool_value op2_(true, true);
-  operand comp_res = vp.xor_in(op1_, op2_);
-
-  return comp_res;
+  return nvp().xor_in(e1->code(env), bool_value(true, true));
 }
 
 operand int_const_class::code(CgenEnvironment *env) {
@@ -1387,14 +1397,7 @@ operand int_const_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  std::string int_val = token->get_string();
-  const char *string_to_char = int_val.c_str();
-
-  int real_val = std::atoi(string_to_char);
-  int val_constraints = std::max(std::numeric_limits<int>::min(), std::min(real_val, std::numeric_limits<int>::max()));
-  int_value res(val_constraints);
-
-  return res;
+  return int_value(atoi(token->get_string()));
 }
 
 operand bool_const_class::code(CgenEnvironment *env) {
@@ -1404,11 +1407,7 @@ operand bool_const_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  if (val) {
-    return bool_value(true, true);
-  } 
-  
-  return bool_value(false, true);
+  return bool_value(val, false);
 }
 
 operand object_class::code(CgenEnvironment *env) {
@@ -1418,12 +1417,24 @@ operand object_class::code(CgenEnvironment *env) {
   // MORE MEANINGFUL
   // return operand();
 
-  ValuePrinter vp(*env->cur_stream);
-  operand *op = env->lookup(name);
-  op_type tp_ = op->get_type().get_deref_type();
-  operand object_res = vp.load(tp_, *op);
+  vp_init;
+  operand *src = env->lookup(name);
+  if (src) {
+    return deref_stack(*src, env);
+  } else  // self type
+  {
+    operand self_loaded = deref_stack(*env->lookup(self), env);
+    CgenNode::Attr *attr = env->get_class()->get_attr(name);
 
-  return object_res;
+    if (attr) {
+      operand attr_ptr = vp.getelementptr(
+          self_loaded.get_type().get_deref_type(), self_loaded, int_value(0),
+          int_value(attr->attr_idx), attr->type.get_ptr_type());
+      return vp.load(attr->type, attr_ptr);
+    }
+
+    return self_loaded;
+  }
 }
 
 operand no_expr_class::code(CgenEnvironment *env) {
@@ -1844,7 +1855,6 @@ void assign_class::make_alloca(CgenEnvironment *env) {
   
   // ADD ANY CODE HERE
   expr->make_alloca(env);
-  set_expr_type(env, expr->get_expr_type(env));
 }
 
 void cond_class::make_alloca(CgenEnvironment *env) {
@@ -1853,17 +1863,10 @@ void cond_class::make_alloca(CgenEnvironment *env) {
 
   // ADD ANY CODE HERE
 
-  ValuePrinter vp(*env->cur_stream);
-
+  vp_init;
   pred->make_alloca(env);
   then_exp->make_alloca(env);
   else_exp->make_alloca(env);
-
-  result_type = then_exp->get_expr_type(env);
-  set_expr_type(env, result_type);
-
-  // make alloca 
-  res_ptr = vp.alloca_mem(result_type);
 }
 
 void loop_class::make_alloca(CgenEnvironment *env) {
@@ -1871,11 +1874,6 @@ void loop_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "loop" << endl;
 
   // ADD ANY CODE HERE
-  ValuePrinter vp(*env->cur_stream);
-
-  op_type int_(INT32);
-  set_expr_type(env, int_);
-
   pred->make_alloca(env);
   body->make_alloca(env);
 }
@@ -1885,16 +1883,7 @@ void block_class::make_alloca(CgenEnvironment *env) {
     std::cerr << "block" << endl;
 
   // ADD ANY CODE HERE
-  int i = 0;
-  for(i = body->first(); body->more(i) && body->more(i+1); i = body->next(i)) {
-    auto expr_iter = body->nth(i);
-    expr_iter->make_alloca(env);
-  }
-
-  auto expr_iter = body->nth(i);
-  expr_iter->make_alloca(env);
-
-  set_expr_type(env, expr_iter->get_expr_type(env));
+  for (auto e : body) e->make_alloca(env);
 }
 
 void let_class::make_alloca(CgenEnvironment *env) {
@@ -1903,28 +1892,7 @@ void let_class::make_alloca(CgenEnvironment *env) {
 
   // ADD ANY CODE HERE
   init->make_alloca(env);
-
-  ValuePrinter vp(*env->cur_stream);
-  std::string type_name = type_decl->get_string();
-
-  if (type_name == "Int") {
-    op_type i32_type(INT32);
-    operand alloc_int = vp.alloca_mem(i32_type);
-    id_type = i32_type;
-    id_op = alloc_int;
-    env->var_tp_add_binding(identifier, &i32_type); 
-  } else if (type_name == "Bool") {
-    op_type i1_type(INT1);
-    operand alloc_bool = vp.alloca_mem(i1_type);
-    id_type = i1_type;
-    id_op = alloc_bool;
-    env->var_tp_add_binding(identifier, &i1_type);
-  }
-
-  env->var_tp_open_scope();
   body->make_alloca(env);
-  set_expr_type(env, body->get_expr_type(env));
-  env->var_tp_close_scope();
 }
 
 void plus_class::make_alloca(CgenEnvironment *env) {
@@ -2065,6 +2033,8 @@ void no_expr_class::make_alloca(CgenEnvironment *env) {
 void static_dispatch_class::make_alloca(CgenEnvironment *env) {
   if (cgen_debug)
     std::cerr << "static dispatch" << endl;
+  expr->make_alloca(env);
+  for (auto a : actual) a->make_alloca(env);
 
 #ifndef MP3
   assert(0 && "Unsupported case for phase 1");
@@ -2087,6 +2057,9 @@ void string_const_class::make_alloca(CgenEnvironment *env) {
 void dispatch_class::make_alloca(CgenEnvironment *env) {
   if (cgen_debug)
     std::cerr << "dispatch" << endl;
+
+  expr->make_alloca(env);
+  for (auto a : actual) a->make_alloca(env);
 
 #ifndef MP3
   assert(0 && "Unsupported case for phase 1");
@@ -2140,6 +2113,7 @@ void new__class::make_alloca(CgenEnvironment *env) {
 void isvoid_class::make_alloca(CgenEnvironment *env) {
   if (cgen_debug)
     std::cerr << "isvoid" << endl;
+  e1->make_alloca(env);
 
 #ifndef MP3
   assert(0 && "Unsupported case for phase 1");
@@ -2179,6 +2153,7 @@ void branch_class::make_alloca(CgenEnvironment *env) {
 
 void method_class::make_alloca(CgenEnvironment *env) {
   // ADD ANY CODE HERE
+  expr->make_alloca(env);
 }
 
 void attr_class::make_alloca(CgenEnvironment *env) {

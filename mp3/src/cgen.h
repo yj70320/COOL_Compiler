@@ -232,6 +232,7 @@ public:
 
   // Must return the CgenNode for a class given the symbol of its name
   CgenNode *type_to_class(Symbol t);
+  CgenNode *op_type_to_class(op_type ty);
 
   // ADD CODE HERE
 
@@ -250,6 +251,25 @@ public:
   void var_tp_open_scope() { var_tp_table.enterscope(); }
   void var_tp_close_scope() { var_tp_table.exitscope(); }
 };
+
+// ref:
+// https://stackoverflow.com/questions/11826554/standard-no-op-output-stream
+
+class NullStream : public std::ostream {
+ private:
+  class NullBuffer : public std::streambuf {
+   public:
+    virtual int overflow(int c) { return c; }
+  } buffer_;
+
+ public:
+  NullStream() : std::ostream(&buffer_) {}
+} ns;
+
+std::ostream *null_stream = (std::ostream *)&ns;
+
+template <typename T>
+void operator<<(const NullStream &, const T &) {}
 
 // Utitlity function
 // Generate any code necessary to convert from given operand to
