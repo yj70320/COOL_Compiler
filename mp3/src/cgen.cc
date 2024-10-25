@@ -8,6 +8,7 @@
 #define EXTERN
 #include "cgen.h"
 #include "operand.h"
+#include "cool-tree.h"
 #include <sstream>
 #include <string>
 #include <limits>
@@ -567,12 +568,30 @@ void CgenClassTable::code_main(){
   // Define an entry basic block
 
   // Call Main_main(). This returns int* for phase 1, Object for phase 2
+  
+  // declare general type
+  // declare the string
+  ValuePrinter vp(*ct_stream);
+  op_type i32_type(INT32);
+  op_arr_type i8_arr_type(INT8, 25);
+  const_value string_content(i8_arr_type, "Main.main() returned %d\x0A\x00", true);
+  vp.init_constant(*ct_stream, "main.printout.str", string_content);
 
-  if (cgen_debug) std::cerr << "===Code Main===" << endl;     
-    ValuePrinter vp(*ct_stream);
 
-    vp.define({INT32}, "main", {});
-    vp.begin_block("entry");
+  // Define a function main that has no parameters and returns an i32
+  // setup function: define i32 @main()
+  std::vector<operand> main_args;
+  vp.define(*ct_stream, i32_type, "main", main_args);
+
+  // Define an entry basic block
+  label main_entry = "entry";
+  vp.begin_block(main_entry);
+
+  // Call Main_main(). This returns int for phase 1, Object for phase 2
+  std::vector<op_type> Main_main_arg_types;
+  std::vector<operand> Main_main_args;
+  operand ret_Main_main = vp.call(Main_main_arg_types, i32_type, "Main.main", true, Main_main_args);
+
 
   #ifndef MP3
   // Get the address of the string "Main_main() returned %d\n" using
@@ -582,28 +601,36 @@ void CgenClassTable::code_main(){
   // and the return value of Main_main() as its arguments
 
   // Insert return 0
-  string msg_name = "main.printout.str";
-  string msg = "Main.main() returned %d\n";
-  op_type msg_ty = op_arr_type(INT8, msg.size() + 1);
-  const_value msg_const(msg_ty, msg, true);
-  vp.init_constant(msg_name, msg_const);
-
-  operand ret = vp.call({}, {INT32}, "Main.main", true, {});
-  op_arr_ptr_type msg_ptr_ty(INT8, msg.size() + 1);
-  global_value msg_glob(msg_ptr_ty, msg_name, msg_const);
-  operand msg_arr_ptr =
-      vp.getelementptr(msg_ty, msg_glob, int_value(0), int_value(0), INT8_PTR);
-  vp.call({INT8_PTR, {VAR_ARG}}, {INT32}, "printf", true, {msg_arr_ptr, ret});
 
   #else
   // MP 3
-  op_type main_return_type("Object*");
-  operand main_obj = vp.call({{}}, {"Main*"}, "Main_new", true, {});
-  vp.call({{"Main*"}}, main_return_type, "Main_main", true, {main_obj});
+  // Get the address of the string "Main_main() returned %d\n" using
+  // getelementptr
+  global_value main_printout_str(i8_arr_type.get_ptr_type(), "main.printout.str");
+  int_value op2_(0);
+  int_value op3_(0);
+  operand tpm_reg(op_type(INT8_PTR), "tpm");
+  vp.getelementptr(*ct_stream, i8_arr_type, main_printout_str, op2_, op3_, tpm_reg);
+
+  // Call printf with the string address of "Main_main() returned %d\n"
+  // and the return value of Main_main() as its arguments
+  std::vector<op_type> printf_arg_types;
+  std::vector<operand> printf_args;
+  op_type  i8ptr_type(INT8_PTR), vararg_type(VAR_ARG);
+  printf_arg_types.push_back(INT8_PTR);
+  printf_arg_types.push_back(vararg_type);
+  printf_args.push_back(tpm_reg);
+  printf_args.push_back(ret_Main_main);
+  vp.call(printf_arg_types, i32_type, "printf", true, printf_args);
+
+  // Insert return 0
+  int_value res_main(0);
+  vp.ret(*ct_stream, res_main);
+
+  // end define
+  vp.end_define();
 
   #endif
-  vp.ret(int_value(0));
-  vp.end_define();
 
 }
 
@@ -1160,7 +1187,7 @@ operand assign_class::code(CgenEnvironment *env) {
     val = conform(val, attr_ptr.get_type().get_deref_type(), env);
     vp.store(val, attr_ptr);
     return val;
-  
+  }
 }
 
 operand cond_class::code(CgenEnvironment *env) {
@@ -1459,56 +1486,9 @@ operand static_dispatch_class::code(CgenEnvironment *env) {
 #else
     // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
     // MORE MEANINGFUL
-
-  auto &o = *env->cur_stream;
-  vp_init;
-
-  operand self_val = expr->code(env);
-
-  if (self_val.get_type().get_id() == INT32)
-    self_val = conform(self_val, {"Int", 1}, env);
-  else if (self_val.get_type().get_id() == INT1)
-    self_val = conform(self_val, {"Bool", 1}, env);
-  else {
-    // TODO error handling with null_value{self_val.get_type()}
-    auto ok = env->new_ok_label();
-    operand is_null = vp.icmp(EQ, self_val, null_value{self_val.get_type()});
-    vp.branch_cond(is_null, "abort", ok);
-    vp.begin_block(ok);
-  }
-
-  op_type self_ty = self_val.get_type();
-
-  std::vector<operand> actual_args{self_val};
-
-  for (auto exp : actual) {
-    actual_args.push_back(exp->code(env));
-  }
-
-  CgenNode *self_cls = env->type_to_class(type_name);
-
-  CgenNode::Method *to_call = self_cls->get_method(name);
-  // TODO find the right vtable function, call it
-
-  for (int i = 0; i < actual_args.size(); i++) {
-    actual_args[i] = conform(actual_args[i], to_call->arg_types[i], env);
-  }
-
-  string resolved_func_name = to_call->func_val.get_name().substr(1);
-  auto ret = vp.call(to_call->arg_types, to_call->ret_ty, resolved_func_name,
-                     true, actual_args);
-  // if (str_eq(env->op_type_to_class(self_val.get_type()) // special case
-  //->get_parentnd()
-  //->get_type_name()
-  //.c_str(),
-  // self_cls->get_type_name().c_str())) {
-  // ret = vp.bitcast(ret, self_val.get_type());
-  //}
-
-  return ret;
-
-#endif
   return operand();
+
+#endif  
 }
 
 operand string_const_class::code(CgenEnvironment *env) {
@@ -1534,54 +1514,9 @@ operand dispatch_class::code(CgenEnvironment *env) {
 #else
     // ADD CODE HERE AND REPLACE "return operand()" WITH SOMETHING
     // MORE MEANINGFUL
-
-  auto &o = *env->cur_stream;
-  vp_init;
-  operand self_val = expr->code(env);
-
-  if (self_val.get_type().get_id() == INT32) {
-    self_val = conform(self_val, {"Int", 1}, env);
-  } else if (self_val.get_type().get_id() == INT1)
-    self_val = conform(self_val, {"Bool", 1}, env);
-
-  op_type self_ty = self_val.get_type();
-
-  // TODO error handling with null_value{self_val.get_type()}
-
-  std::vector<operand> actual_args{self_val};
-
-  for (auto exp : actual) {
-    actual_args.push_back(exp->code(env));
-  }
-
-  CgenNode *self_cls = env->op_type_to_class(self_ty);
-
-  CgenNode::Method *to_call = self_cls->get_method(name);
-
-  // find the right vtable function, call it
-  operand vtb_ptr = load_vtable_ptr(self_val, self_cls, env);
-  operand func_ptr = vp.getelementptr(
-      self_cls->vtable_ptr_ty.get_deref_type(), vtb_ptr, int_value(0),
-      int_value(to_call->vtable_idx), to_call->func_ptr_ty);
-  operand func_to_call{to_call->func_ptr_ty.get_deref_type(), env->new_name()};
-  vp.load(o, func_to_call.get_type(), func_ptr, func_to_call);
-
-  for (int i = 0; i < actual_args.size(); i++) {
-    actual_args[i] = conform(actual_args[i], to_call->arg_types[i], env);
-  }
-
-  operand ret{to_call->ret_ty, env->new_name()};
-  vp.call(o, to_call->arg_types, func_to_call.get_name().substr(1), false,
-          actual_args, ret);
-
-  if (str_eq(name->get_string(), "copy")) {  // special case for object copy
-    ret = vp.bitcast(ret, self_ty);
-  }
-
-  return ret;
-
-#endif
   return operand();
+#endif
+  
 }
 
 operand typcase_class::code(CgenEnvironment *env) {
@@ -1710,38 +1645,6 @@ void method_class::layout_feature(CgenNode *cls) {
   assert(0 && "Unsupported case for phase 1");
 #else
   // ADD CODE HERE
-  CgenNode::Method entry{.method = this, .name = name, .expr = expr};
-
-  string method_name = cls->get_type_name() + "_" + name->get_string();
-
-  operand self({cls->get_type_name(), 1}, "self");
-
-  std::vector<op_type> arg_types{self.get_type()};
-  std::vector<operand> args{self};
-  for (auto formal : formals) {
-    op_type arg_ty = sym_as_type_passable(formal->get_type_decl(), cls);
-    operand arg(arg_ty, formal->get_name()->get_string());
-    arg_types.push_back(arg_ty);
-    args.push_back(arg);
-  }
-  entry.args = args;
-  entry.arg_types = arg_types;
-  entry.ret_ty = sym_as_type_passable(get_return_type(), cls);
-  if (str_eq(method_name.c_str(), "Main_main")) main_return_type = entry.ret_ty;
-
-  entry.func_ty = op_func_type(entry.ret_ty, arg_types);
-  entry.func_ptr_ty = op_func_ptr_type(entry.ret_ty, arg_types);
-
-  global_value func_global({method_name}, method_name);
-  entry.func_val = const_value({method_name}, func_global.get_name(), false);
-
-  entry.vtable_idx = cls->member_methods.size() + 3;
-
-  if (CgenNode::Method *parent_entry = cls->get_method(entry.name)) {
-    entry.vtable_idx = parent_entry->vtable_idx;
-    *parent_entry = entry;
-  } else
-    cls->member_methods.push_back(entry);
 
 #endif
 }

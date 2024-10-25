@@ -125,6 +125,7 @@ typedef Cases_class *Cases;
 
 #define Expression_EXTRAS                                                      \
   Symbol type;                                                                 \
+  op_type op_expr_tp;                                                          \
   Symbol get_type() { return type; }                                           \
   Expression set_type(Symbol s) {                                              \
     type = s;                                                                  \
@@ -133,14 +134,18 @@ typedef Cases_class *Cases;
   virtual int no_code() { return 0; } /* ## */                                 \
   virtual void dump_with_types(ostream &, int) = 0;                            \
   virtual void make_alloca(CgenEnvironment *) = 0;                             \
+  virtual void set_expr_type(CgenEnvironment *, op_type) = 0;                  \
   virtual operand code(CgenEnvironment *) = 0;                                 \
+  virtual op_type get_expr_type(CgenEnvironment *) = 0;                        \
   void dump_type(ostream &, int);                                              \
   Expression_class() { type = (Symbol)NULL; }
 
 #define Expression_SHARED_EXTRAS                                               \
   void make_alloca(CgenEnvironment *);                                         \
   operand code(CgenEnvironment *);                                             \
-  void dump_with_types(ostream &, int);
+  void dump_with_types(ostream &, int);                                        \
+  op_type get_expr_type(CgenEnvironment *env) override {return op_expr_tp;}    \
+  void set_expr_type(CgenEnvironment *env, op_type tp) override {op_expr_tp = tp;}
 
 #define no_expr_EXTRAS        /* ## */                                         \
   int no_code() { return 1; } /* ## */

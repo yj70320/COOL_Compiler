@@ -18,13 +18,20 @@ const char IO_string[] = "IO";
 const char default_string[] = "";
 
 /* Class vtable prototypes */
-const Object_vtable _Object_vtable_prototype = {
-  /* ADD CODE HERE */
-  printf("Abort called from class %s\n",
-         !self ? "Unknown" : self->vtblptr->name);
-  exit(1);
-  return self;
-};
+extern const Object_vtable _Object_vtable_prototype;
+extern const Int_vtable _Int_vtable_prototype;
+extern const Bool_vtable _Bool_vtable_prototype;
+extern const String_vtable _String_vtable_prototype;
+extern const IO_vtable _IO_vtable_prototype;
+
+/* Class vtable prototypes */
+// const Object_vtable _Object_vtable_prototype = {
+//   /* ADD CODE HERE */
+//   printf("Abort called from class %s\n",
+//          !self ? "Unknown" : self->vtblptr->name);
+//   exit(1);
+//   return self;
+// };
 
 /* ADD CODE HERE FOR MORE VTABLE PROTOTYPES */
 

@@ -205,6 +205,7 @@ private:
 
   // ADD CODE HERE
   CgenNode *cur_class;
+  op_type main_return_type;
 
 public:
   std::ostream *cur_stream;
@@ -235,6 +236,7 @@ public:
   CgenNode *op_type_to_class(op_type ty);
 
   // ADD CODE HERE
+  int method_var_count = 0;
 
   // Scope management
   void add_binding(Symbol identifier, operand *op) { var_table.addid(identifier, op); }
