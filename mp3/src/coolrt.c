@@ -1,4 +1,5 @@
 #include "coolrt.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,17 +24,53 @@ extern const Int_vtable _Int_vtable_prototype;
 extern const Bool_vtable _Bool_vtable_prototype;
 extern const String_vtable _String_vtable_prototype;
 extern const IO_vtable _IO_vtable_prototype;
-
-/* Class vtable prototypes */
-// const Object_vtable _Object_vtable_prototype = {
-//   /* ADD CODE HERE */
-//   printf("Abort called from class %s\n",
-//          !self ? "Unknown" : self->vtblptr->name);
-//   exit(1);
-//   return self;
-// };
-
-/* ADD CODE HERE FOR MORE VTABLE PROTOTYPES */
+/*
+const Object_vtable _Object_vtable_prototype = {
+    .type = 0,
+    .size = sizeof(Object),
+    .name = (char *)Object_string,
+    .Object_new = Object_new,
+    .Object_abort = Object_abort,
+    .Object_type_name = Object_type_name,
+    .Object_copy = Object_copy};
+const Int_vtable _Int_vtable_prototype = {.type = 1,
+                                          .size = sizeof(Int),
+                                          .name = (char *)Int_string,
+                                          .Object_new = Int_new,
+                                          .Object_abort = Object_abort,
+                                          .Object_type_name = Object_type_name,
+                                          .Object_copy = Object_copy};
+const Bool_vtable _Bool_vtable_prototype = {
+    .type = 2,
+    .size = sizeof(Bool),
+    .name = (char *)Bool_string,
+    .Object_new = Bool_new,
+    .Object_abort = Object_abort,
+    .Object_type_name = Object_type_name,
+    .Object_copy = Object_copy};
+const String_vtable _String_vtable_prototype = {
+    .type = 3,
+    .size = sizeof(String),
+    .name = (char *)String_string,
+    .Object_new = String_new,
+    .Object_abort = Object_abort,
+    .Object_type_name = Object_type_name,
+    .Object_copy = Object_copy,
+    .String_length = String_length,
+    .String_concat = String_concat,
+    .String_substr = String_substr};
+const IO_vtable _IO_vtable_prototype = {.type = 4,
+                                        .size = sizeof(IO),
+                                        .name = (char *)IO_string,
+                                        .Object_new = IO_new,
+                                        .Object_abort = Object_abort,
+                                        .Object_type_name = Object_type_name,
+                                        .Object_copy = Object_copy,
+                                        .IO_out_string = IO_out_string,
+                                        .IO_out_int = IO_out_int,
+                                        .IO_in_string = IO_in_string,
+                                        .IO_in_int = IO_in_int};
+*/
 
 /*
 // Methods in class object (only some are provided to you)
@@ -145,13 +182,13 @@ int IO_in_int(IO *self) {
   /* Now extract initial int and ignore the rest of the line */
   int x;
   int num_ints = 0;
-  if (len)
-    /* Discards initial spaces*/
+  if (len) /* Discards initial spaces*/
     num_ints = sscanf(in_string, " %d", &x);
 
   /* If no text found, abort. */
   if (num_ints == 0) {
-    fprintf(stderr, "At %s(line %d): Invalid integer on input in IO::in_int()\n",
+    fprintf(stderr,
+            "At %s(line %d): Invalid integer on input in IO::in_int()\n",
             __FILE__, __LINE__);
     Object_abort((Object *)self);
   }
@@ -159,9 +196,7 @@ int IO_in_int(IO *self) {
 }
 
 /* ADD CODE HERE FOR MORE METHODS OF CLASS IO */
-
 /* ADD CODE HERE FOR METHODS OF OTHER BUILTIN CLASSES */
-
 Object *Object_new() {
   Object *ret = (Object *)malloc(sizeof(Object));
   ret->vtblptr = &_Object_vtable_prototype;

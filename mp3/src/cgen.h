@@ -12,6 +12,8 @@
 
 // ----------------------------- END DESIGN DOCS --------------------------- //
 
+#include <utility>
+
 #include "cool-tree.h"
 #include "symtab.h"
 #include "value_printer.h"
@@ -24,7 +26,7 @@
 // code generation for an entire Cool program.
 //
 class CgenClassTable : public cool::SymbolTable<Symbol, CgenNode> {
-private:
+ private:
   // Class list
   List<CgenNode> *nds;
   List<CgenNode> *special_nds;
@@ -34,7 +36,7 @@ private:
   CgenNode *getMainmain(CgenNode *c);
 #endif
 
-public:
+ public:
   // The ostream where we are emitting code
   ostream *ct_stream;
   // CgenClassTable constructor begins and ends the code generation process
@@ -45,7 +47,7 @@ public:
   CgenNode *root();
   int get_num_classes() const { return current_tag; }
 
-private:
+ private:
   // COMPLETE FUNCTIONS
 
   // Create declarations for C runtime functions we need to generate code
@@ -86,13 +88,11 @@ private:
 // generating code for each of its methods.
 //
 class CgenNode : public class__class {
-public:
+ public:
   enum Basicness { Basic, NotBasic };
-
 #ifndef MP3
   void codeGenMainmain();
 #endif
-
 
   ostream *ct_stream;
   struct Method {
@@ -128,10 +128,10 @@ public:
     return nullptr;
   }
 
-private:
-  CgenNode *parentnd;       // Parent of class
-  List<CgenNode> *children; // Children of class
-  Basicness basic_status;   // `Basic' or 'NotBasic'
+ private:
+  CgenNode *parentnd;        // Parent of class
+  List<CgenNode> *children;  // Children of class
+  Basicness basic_status;    // `Basic' or 'NotBasic'
   CgenClassTable *class_table;
 
   // Class tag.  Should be unique for each class in the tree
@@ -139,12 +139,12 @@ private:
   int max_child;
 
   // ADD CODE HERE
-public:
+ public:
   string vtable_type_name;
   op_type vtable_ptr_ty;
   string prototype_name;
 
-public:
+ public:
   // COMPLETE FUNCTIONS
 
   // Relationships with other nodes in the tree
@@ -168,7 +168,7 @@ public:
   virtual ~CgenNode() {}
 
   // Class setup. You need to write the body of this function.
-  void setup(int tag, int depth);
+  void setup(int tag, int depth, ostream *ct_stream);
 
   // Class codegen. You need to write the body of this function.
   void code_class();
@@ -176,7 +176,7 @@ public:
   // ADD CODE HERE
   string get_type_name() { return string(name->get_string()); }
 
-private:
+ private:
   // Layout the methods and attributes for code generation
   // You need to write the body of this function.
   void layout_features();
@@ -193,10 +193,9 @@ private:
 // examples are the current CgenNode and the current Function.
 //
 class CgenEnvironment {
-private:
+ private:
   // mapping from variable names to memory locations
   cool::SymbolTable<Symbol, operand> var_table;
-  cool::SymbolTable<Symbol, op_type> var_tp_table;
 
   // Keep counters for unique name generation in the current method
   int block_count;
@@ -205,9 +204,9 @@ private:
 
   // ADD CODE HERE
   CgenNode *cur_class;
-  op_type main_return_type;
 
-public:
+ public:
+  int method_var_count = 0;
   std::ostream *cur_stream;
 
   // fresh name generation functions
@@ -234,24 +233,7 @@ public:
   // Must return the CgenNode for a class given the symbol of its name
   CgenNode *type_to_class(Symbol t);
   CgenNode *op_type_to_class(op_type ty);
-
   // ADD CODE HERE
-  int method_var_count = 0;
-
-  // Scope management
-  void add_binding(Symbol identifier, operand *op) { var_table.addid(identifier, op); }
-  void open_scope() { var_table.enterscope(); }
-  void close_scope() { var_table.exitscope(); }
-
-  // Label generation functions
-  string new_loop_label() { return new_label("loop", true); }
-  string new_true_label() { return new_label("true", true); }
-  string new_false_label() { return new_label("false", true); }
-  string new_end_label() { return new_label("end", true); }
-
-  void var_tp_add_binding(Symbol name, op_type *op) { var_tp_table.addid(name, op); }
-  void var_tp_open_scope() { var_tp_table.enterscope(); }
-  void var_tp_close_scope() { var_tp_table.exitscope(); }
 };
 
 // ref:

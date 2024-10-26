@@ -109,6 +109,7 @@ private:
   vector<op_type> args;
 
 public:
+  op_func_type(){}
   op_func_type(op_type res_type, vector<op_type> arg_types);
   bool is_ptr() { return false; }
   op_type get_ptr_type();
@@ -123,6 +124,7 @@ private:
 
 public:
   op_func_ptr_type(op_type res_type, vector<op_type> arg_types);
+  op_func_ptr_type(){}
   bool is_ptr() { return true; }
   op_type get_ptr_type();
   op_type get_deref_type();
@@ -168,6 +170,7 @@ protected:
   bool internal;
 
 public:
+  const_value(){}
   const_value(op_type t, string val, bool intr) : value(val), internal(intr) {
     type = t;
     name = value;
