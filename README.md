@@ -1,3 +1,7 @@
+Good Job. Great Effort. Ride on to MP4 and keep going. Very soon we will hit the jackpot. I will see you on Tuesday. Have a great weekend. 
+
+
+
 This project is for COSC375 Compiler Construction.
 
 The goal is to write a compiler to translate COOL to MIPS.
