@@ -67,4 +67,8 @@ copy from mp2:
 mp4: register allocator
 =========================================================================
 
+For step 1.5 
+
+llc -regalloc=simple file_name.ll -o file_name.s should be replaced by llc -regalloc=basic file_name.ll -o file_name.s or llc -regalloc=greedy file_name.ll -o file_name.s
+
 
