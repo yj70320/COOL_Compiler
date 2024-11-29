@@ -69,6 +69,26 @@ mp4: register allocator
 
 For step 1.5 
 
-llc -regalloc=simple file_name.ll -o file_name.s should be replaced by llc -regalloc=basic file_name.ll -o file_name.s or llc -regalloc=greedy file_name.ll -o file_name.s
+llc -regalloc=simple filename.ll -o filename.s 
+
+should be replaced by 
+
+llc --regalloc=basic filename.ll -o filename.s 
+
+or 
+
+llc --regalloc=greedy filename.ll -o filename.s
 
 
+
+testing
+
+llc --verify-machineinstrs filename.ll -o filename.s
+
+llc --regalloc=simple filename.ll -o filename.s
+
+llc --O0 filename.ll -o filename.s
+
+llc --O1 filename.ll -o filename.s
+
+llc --O2 filename.ll -o filename.s
