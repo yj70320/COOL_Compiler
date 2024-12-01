@@ -1,0 +1,12 @@
+--- lib/CodeGen/TargetPassConfig.cpp	2022-03-14 04:44:55.000000000 -0500
++++ lib/CodeGen/TargetPassConfig.cpp	2022-10-25 09:06:29.064270739 -0500
+@@ -1378,7 +1378,8 @@ FunctionPass *TargetPassConfig::createRe
+ 
+ bool TargetPassConfig::addRegAssignAndRewriteFast() {
+   if (RegAlloc != (RegisterRegAlloc::FunctionPassCtor)&useDefaultRegisterAllocator &&
+-      RegAlloc != (RegisterRegAlloc::FunctionPassCtor)&createFastRegisterAllocator)
++      RegAlloc != (RegisterRegAlloc::FunctionPassCtor)&createFastRegisterAllocator &&
++      RegAlloc != (RegisterRegAlloc::FunctionPassCtor)&createSimpleRegisterAllocator)
+     report_fatal_error("Must use fast (default) register allocator for unoptimized regalloc.");
+ 
+   addPass(createRegAllocPass(false));

@@ -14,21 +14,20 @@ even:                                   # @even
 	jle	.LBB0_3
 # %bb.2:                                # %positive
 	decl	%edi
+	jmp	.LBB0_4
+.LBB0_3:                                # %negative
+	incl	%edi
+.LBB0_4:                                # %negative
 	callq	even@PLT
 	testb	$1, %al
 	je	.LBB0_5
-.LBB0_6:                                # %false
+# %bb.6:                                # %false
 	xorl	%eax, %eax
 	popq	%rcx
 	.cfi_def_cfa_offset 8
 	retq
-.LBB0_3:                                # %negative
-	.cfi_def_cfa_offset 16
-	incl	%edi
-	callq	even@PLT
-	testb	$1, %al
-	jne	.LBB0_6
 .LBB0_5:                                # %true
+	.cfi_def_cfa_offset 16
 	movb	$1, %al
 	popq	%rcx
 	.cfi_def_cfa_offset 8
