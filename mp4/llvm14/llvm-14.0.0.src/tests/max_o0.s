@@ -6,19 +6,20 @@
 max:                                    # @max
 	.cfi_startproc
 # %bb.0:                                # %entry
-	movl	%esi, %eax
-	movl	%edi, %ecx
-	cmpl	%eax, %ecx
-	movl	%eax, -4(%rsp)                  # 4-byte Spill
-	movl	%ecx, -8(%rsp)                  # 4-byte Spill
-	jge	.LBB0_2
-# %bb.1:                                # %else
-	movl	-4(%rsp), %ecx                  # 4-byte Reload
-	movl	%ecx, %eax
-	movl	%eax, -8(%rsp)                  # 4-byte Spill
-.LBB0_2:                                # %end
-	movl	-8(%rsp), %ecx                  # 4-byte Reload
-	movl	%ecx, %eax
+	movl	%edi, -8(%rsp)                  # 4-byte Spill
+	movl	%esi, -4(%rsp)                  # 4-byte Spill
+	cmpl	%esi, %edi
+	jl	.LBB0_2
+# %bb.1:                                # %then
+	movl	-8(%rsp), %eax                  # 4-byte Reload
+	movl	%eax, -12(%rsp)                 # 4-byte Spill
+	jmp	.LBB0_3
+.LBB0_2:                                # %else
+	movl	-4(%rsp), %eax                  # 4-byte Reload
+	movl	%eax, -12(%rsp)                 # 4-byte Spill
+	jmp	.LBB0_3
+.LBB0_3:                                # %end
+	movl	-12(%rsp), %eax                 # 4-byte Reload
 	retq
 .Lfunc_end0:
 	.size	max, .Lfunc_end0-max
