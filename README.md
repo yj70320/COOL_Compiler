@@ -69,18 +69,18 @@ mp4: register allocator
 
 For step 1.5 
 
-llc --regalloc=simple filename.ll -o filename.s 
+llc --regalloc=simple filename.ll
 
 
 
 testing
 
-llc --verify-machineinstrs filename.ll -o filename.s
+llc --verify-machineinstrs filename.ll
 
-llc --regalloc=simple filename.ll -o filename.s
+llc --regalloc=simple filename.ll
 
-llc -O0 filename.ll -o filename.s
+llc -O0 filename.ll 
 
-llc -O1 filename.ll -o filename.s
+llc -O1 filename.ll
 
-llc -O2 filename.ll -o filename.s
+llc -O2 filename.ll
