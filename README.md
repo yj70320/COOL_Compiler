@@ -64,6 +64,23 @@ copy from mp2:
 (4) README.md
 
 
+test:
+
+make filename.ast
+
+make filename.ll
+
+make filename.bc
+
+make filename.exe
+
+make filename.out
+
+make filename.verify
+
+make file-opt.bc
+
+
 mp4: register allocator
 =========================================================================
 
