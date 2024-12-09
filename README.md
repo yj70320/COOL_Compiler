@@ -10,6 +10,8 @@ The goal is to write a compiler to translate COOL to MIPS.
 mp1: lexer and parser
 =========================================================================
 
+test file: src/bison_test_good.cl, src/bison_test_bad.cl
+
 testing:
 
 compile lexer: make lexer
@@ -27,6 +29,8 @@ Good Job.
 
 mp2: code generation 1 (cgen-1)
 =========================================================================
+
+test file: test-1
 
 testing:
 
