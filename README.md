@@ -4,7 +4,7 @@ Good Job. Great Effort. Ride on to MP4 and keep going. Very soon we will hit the
 
 This project is for COSC375 Compiler Construction.
 
-The goal is to write a compiler to translate COOL to MIPS.
+The goal is to write a compiler to translate COOL to LLVM assembly code.
 
 
 mp1: lexer and parser

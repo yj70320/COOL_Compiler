@@ -4,3 +4,5 @@ class Main inherits IO
      let x : Int <- 7, y : Int in { y <- x.copy(); out_int(y); }
    };
 };
+
+
