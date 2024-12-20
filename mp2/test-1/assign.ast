@@ -1,48 +1,48 @@
-#8
+#9
 _program
-  #8
+  #9
   _class
     Main
     Object
     "assign.cl"
     (
-    #7
+    #8
     _method
       main
       Int
-      #6
+      #7
       _block
-        #3
+        #4
         _int
           3
         : Int
-        #4
+        #5
         _let
           x
           Int
-          #4
+          #5
           _int
             3
           : Int
-          #4
+          #5
           _let
             x
             Bool
-            #4
+            #5
             _no_expr
             : _no_type
-            #4
+            #5
             _let
               y
               Int
-              #4
+              #5
               _int
                 3
               : Int
-              #4
+              #5
               _assign
                 y
-                #4
+                #5
                 _int
                   3
                 : Int
@@ -50,7 +50,7 @@ _program
             : Int
           : Int
         : Int
-        #5
+        #6
         _int
           7
         : Int

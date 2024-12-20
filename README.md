@@ -4,11 +4,13 @@ Good Job. Great Effort. Ride on to MP4 and keep going. Very soon we will hit the
 
 This project is for COSC375 Compiler Construction.
 
-The goal is to write a compiler to translate COOL to MIPS.
+The goal is to write a compiler to translate COOL to LLVM assembly code.
 
 
 mp1: lexer and parser
 =========================================================================
+
+test file: src/bison_test_good.cl, src/bison_test_bad.cl
 
 testing:
 
@@ -27,6 +29,8 @@ Good Job.
 
 mp2: code generation 1 (cgen-1)
 =========================================================================
+
+test file: test-1
 
 testing:
 
@@ -62,3 +66,42 @@ copy from mp2:
 (3) Makefile.common
 
 (4) README.md
+
+
+test:
+
+make filename.ast
+
+make filename.ll
+
+make filename.bc
+
+make filename.exe
+
+make filename.out
+
+make filename.verify
+
+make file-opt.bc
+
+
+mp4: register allocator
+=========================================================================
+
+For step 1.5 
+
+llc --regalloc=simple filename.ll
+
+
+
+testing
+
+llc --verify-machineinstrs filename.ll
+
+llc --regalloc=simple filename.ll
+
+llc -O0 filename.ll 
+
+llc -O1 filename.ll
+
+llc -O2 filename.ll
